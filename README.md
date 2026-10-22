@@ -4,15 +4,22 @@ A Windows Forms learning app with a three-minute introduction, **143 distinct GC
 
 ## Run
 
-Requires Windows and the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+1. Open [Releases → Latest release](https://github.com/Esra11/.NET-GC-Quiz/releases/latest).
+2. Under **Assets**, download **.NET-GC-Quiz-v1.0.0-win-x64.zip** (not the source-code ZIP).
+3. Right-click the ZIP and select **Extract All**.
+4. Open the extracted folder and double-click **Run Quiz.cmd**.
 
-Double-click **Run Quiz.cmd**, or use the command below. The latest local build is available at `artifacts/app-report-fast-20261022/DotNetGcQuiz.exe`; keep its companion files together. That build requires the .NET 10 Windows Desktop Runtime, already included with a Windows .NET 10 SDK installation.
+Requires Windows x64. The release includes the .NET runtime; no SDK, Python or separate .NET installation is needed. Keep the extracted files together.
+
+### Only if you modify the source code
+
+Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0), then rebuild and run your changes from the project folder:
 
 ```powershell
 dotnet run --project src/DotNetGcQuiz
 ```
 
-You can also open `DotNetGcQuiz.slnx` in Visual Studio with .NET 10 and Windows desktop development support.
+You can also open `DotNetGcQuiz.slnx` in Visual Studio with .NET 10 and Windows desktop development support. App behavior is written in C#; questions can be edited directly in `src/DotNetGcQuiz/Content/questions.json`. The Python helper is optional and is not required to edit or run the app.
 
 ## How it works
 
@@ -76,21 +83,8 @@ dotnet publish src/DotNetGcQuiz -c Release -r win-x64 --self-contained true -p:P
 
 Run `artifacts/publish/win-x64/DotNetGcQuiz.exe`. This build includes the runtime. Use `win-arm64` instead of `win-x64` for a native ARM64 build. The GitHub workflow builds, verifies and uploads the x64 portable app as an artifact.
 
-Publishing the self-contained variant requires access to NuGet for the official runtime packs. The verified local `artifacts/app` build is framework-dependent; the self-contained variant could not be produced in the current environment because the package endpoint failed TLS/network access.
+Publishing the self-contained variant requires access to NuGet for the official runtime packs. GitHub Actions produces this build on Windows; release downloads include that runtime.
 
-## Upload to your GitHub account
+## Repository
 
-GitHub repository names cannot contain spaces. Use **dotNET-GC-Quiz** as the repository name and **.NET GC Quiz** as its title/description. The app is ready to upload; no remote repository has been created for you.
-
-Sign in to your intended personal account in the browser when prompted. An email address alone is not a GitHub username.
-
-```powershell
-gh auth login --web
-gh auth status
-git init
-git add .
-git commit -m "Build .NET GC learning and quiz app"
-gh repo create dotNET-GC-Quiz --private --source=. --remote=origin --push --description ".NET GC Quiz"
-```
-
-Choose `--public` instead of `--private` if you want a public repository. Dumps, videos, subtitles, build output and local reports are excluded by `.gitignore`. Review `git status` before committing.
+[Esra11/.NET-GC-Quiz](https://github.com/Esra11/.NET-GC-Quiz). Build outputs, reports, dumps, videos and subtitles are excluded by `.gitignore`. Python and PowerShell files under `tools/` are optional authoring utilities and are excluded from GitHub's application language chart.

@@ -1,0 +1,2 @@
+# Question-authoring helpers are supporting content, not application language.
+tools/** linguist-detectable=false
