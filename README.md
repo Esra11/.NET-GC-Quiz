@@ -5,7 +5,7 @@ A Windows Forms learning app with a three-minute introduction, **143 distinct GC
 ## Run
 
 1. Open [Releases → Latest release](https://github.com/Esra11/.NET-GC-Quiz/releases/latest).
-2. Under **Assets**, download **.NET-GC-Quiz-v1.0.0-win-x64.zip** (not the source-code ZIP).
+2. Under **Assets**, download **NET-GC-Quiz-v1.0.0-win-x64.zip** (not the source-code ZIP).
 3. Right-click the ZIP and select **Extract All**.
 4. Open the extracted folder and double-click **Run Quiz.cmd**.
 
