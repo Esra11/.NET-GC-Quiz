@@ -1,0 +1,2147 @@
+[
+  {
+    "Id": "gc-001",
+    "Round": "GC overview",
+    "Number": 1,
+    "Topic": "Overview",
+    "Prompt": "What is the GC's main responsibility?",
+    "Options": [
+      "Prevent all memory leaks",
+      "Reclaim managed heap space that is no longer needed",
+      "Run Dispose on every object",
+      "Release every operating-system resource"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "GC manages managed memory. File handles and other external resources require explicit cleanup or an appropriate finalization fallback.\n\nThink of memory management and resource management as separate jobs. A FileStream object occupies managed memory but also owns an operating-system handle. Collecting the wrapper is not a good way to schedule closing the file: use using or Dispose for timely cleanup. GC also cannot fix an unwanted object that your static cache still strongly references."
+  },
+  {
+    "Id": "gc-002",
+    "Round": "GC overview",
+    "Number": 2,
+    "Topic": "Overview",
+    "Prompt": "What makes an ordinary managed object eligible for collection?",
+    "Options": [
+      "Its variable has left a source-code block",
+      "It is no longer reachable from GC roots",
+      "It has existed for one minute",
+      "It has a public Dispose method"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Reachability determines eligibility. Actual collection happens later, and finalizable objects may require additional retention.\n\nEligible does not mean already deleted. The runtime must finish the necessary collection processing before reclaiming space. A variable going out of scope, assigning null, or calling Dispose removes no other references automatically. For a finalizable object there is an additional step: it can remain alive long enough for finalization before a later collection reclaims it."
+  },
+  {
+    "Id": "gc-003",
+    "Round": "GC overview",
+    "Number": 3,
+    "Topic": "Overview",
+    "Prompt": "Which is the usual phase order for a blocking compacting collection?",
+    "Options": [
+      "Plan → Dispose → Compact → Mark",
+      "Sweep → Finalize → Mark → Compact",
+      "Compact → Mark → Plan → Relocate",
+      "Mark → Plan → Relocate → Compact"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "Mark finds survivors; planning computes how to reclaim space; relocation updates references; compaction moves survivors. A sweeping collection takes a different path.\n\nThis is a blocking compacting collection path, not a requirement that every GC execute four identical passes. After marking, planning may choose a nonmoving sweep instead. Relocation means repairing references to destinations, while compaction means physically moving bytes. A single collection can choose different treatment for different heap areas."
+  },
+  {
+    "Id": "gc-004",
+    "Round": "GC overview",
+    "Number": 4,
+    "Topic": "Overview",
+    "Prompt": "What is the purpose of the mark phase?",
+    "Options": [
+      "Find objects reachable from roots and references",
+      "Call all Dispose methods",
+      "Move survivors together",
+      "Return all memory to Windows"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Marking follows references to identify the reachable graph. Moving and reclaiming memory are separate work.\n\nThe object graph is not built from scratch by GC: application allocations and reference assignments have already created its nodes and edges. Marking discovers the portion reachable from roots. An object not marked halfway through traversal may simply not have been reached yet; that state alone does not prove it can be reclaimed."
+  },
+  {
+    "Id": "gc-005",
+    "Round": "GC overview",
+    "Number": 5,
+    "Topic": "Overview",
+    "Prompt": "What does the plan phase decide?",
+    "Options": [
+      "Which source files should be unloaded",
+      "Which finalizer should run first",
+      "How to reclaim space, including whether to sweep or compact",
+      "Which methods should be JIT compiled"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Planning evaluates survivors, free space, pinning and moving cost. Exact implementation details depend on the runtime and collection type.\n\nPlanning considers more than whether the next requested object fits. It can consider free-space distribution, moving cost, pinned survivors and memory pressure. A noncompacting collection still needs to determine how usable free space will be recovered. Do not assume that all planning can run concurrently just because its eventual result might be sweeping."
+  },
+  {
+    "Id": "gc-006",
+    "Round": "GC overview",
+    "Number": 6,
+    "Topic": "Overview",
+    "Prompt": "How do sweeping and compaction differ?",
+    "Options": [
+      "Sweeping calls Dispose; compaction calls Finalize",
+      "Sweeping reuses dead gaps; compaction also moves survivors to reduce gaps",
+      "Only compaction can reclaim dead space",
+      "Sweeping moves every object; compaction never moves objects"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Sweeping leaves survivors in place and makes gaps reusable. Compaction packs movable survivors more closely.\n\nFor example, live A, dead gap, live B can become live A followed by live B after compaction. With sweeping, the gap remains between them but can satisfy an allocation of a suitable size. Neither operation automatically runs Dispose. Freeing gaps also does not guarantee that Windows receives those pages immediately."
+  },
+  {
+    "Id": "gc-007",
+    "Round": "GC overview",
+    "Number": 7,
+    "Topic": "Overview",
+    "Prompt": "What does relocation do in a moving collection?",
+    "Options": [
+      "Copies every object to the stack",
+      "Changes all objects to generation 0",
+      "Updates references to the planned destination addresses",
+      "Executes application constructors again"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "References in roots and object fields must point to the destinations where survivors will reside after compaction.\n\nSuppose B will move from address 1000 to 800. A field holding a tracked reference to B must be changed to B's destination; the same principle applies to a root in a stack slot, register or handle. This is not just updating a lookup table. Moving compaction coordinates application suspension while references and object locations are repaired."
+  },
+  {
+    "Id": "gc-008",
+    "Round": "GC overview",
+    "Number": 8,
+    "Topic": "Overview",
+    "Prompt": "Does every GC compact every heap?",
+    "Options": [
+      "Yes, but only at process shutdown",
+      "Yes, including every pinned object",
+      "No; GC may sweep some areas and compact others",
+      "No; managed objects never move"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "A collection's reclamation strategy can differ by heap or area. LOH is usually swept, while small-object areas may be compacted.\n\nFor example, a full collection might compact small-object areas while sweeping the LOH. Pins can constrain movement even within an area selected for compaction. Therefore, 'mark, plan, then sweep or compact' is a useful overview, but sweeping versus compaction need not be one global either/or decision for the whole process."
+  },
+  {
+    "Id": "gc-009",
+    "Round": "GC overview",
+    "Number": 9,
+    "Topic": "Overview",
+    "Prompt": "What normally triggers a collection during allocation?",
+    "Options": [
+      "Reaching an allocation budget or needing memory on the allocation slow path",
+      "Every individual new expression",
+      "Only a call to GC.Collect",
+      "Every time a method returns"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Allocation budgets commonly trigger GC. Memory pressure and explicit requests can also cause collections; a context refill alone need not trigger one.\n\nA thread can reach the end of its allocation context and obtain another range without collecting. If budgets or memory availability require collection, GC then begins the applicable tracing and reclamation work. The trigger and the phases are different ideas: allocation can trigger a GC, but allocation is not itself the mark phase."
+  },
+  {
+    "Id": "gc-010",
+    "Round": "GC overview",
+    "Number": 10,
+    "Topic": "Overview",
+    "Prompt": "Where do most newly allocated small heap objects start?",
+    "Options": [
+      "The LOH",
+      "The finalization queue",
+      "Generation 0",
+      "Generation 2"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Most small managed heap allocations start in generation 0. Large objects and supported pinned allocations have separate paths.\n\nThis refers to managed heap allocations, not a claim that every C# value requires a heap allocation. Struct values may be inline in another object or live in stack/register storage. A JIT optimization can also eliminate some allocations. For a normal small object that really is heap-allocated, generation 0 is the usual starting point."
+  },
+  {
+    "Id": "gc-011",
+    "Round": "GC overview",
+    "Number": 11,
+    "Topic": "Overview",
+    "Prompt": "Which generations does a generation 1 collection include?",
+    "Options": [
+      "Only generations 1 and 2",
+      "Only generation 1",
+      "All generations and every OS heap",
+      "Generations 0 and 1"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "Collecting a generation includes younger generations. A generation 1 collection includes generation 0, but not a full generation 2 collection.\n\nGeneration collection is inclusive of younger generations: a generation 1 collection covers 0 and 1, and a full generation 2 collection covers the ordinary younger generations too. LOH and POH have their own heap organization and are collected with generation 2 work. Background collection changes scheduling, not the basic meaning of generation membership."
+  },
+  {
+    "Id": "gc-012",
+    "Round": "GC overview",
+    "Number": 12,
+    "Topic": "Overview",
+    "Prompt": "What happens when a generation 2 object survives another collection?",
+    "Options": [
+      "It usually remains in generation 2",
+      "It becomes generation 3",
+      "It must move to the LOH",
+      "It automatically becomes pinned"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Generation 2 is the oldest ordinary managed generation. Survival does not create a generation 3.\n\nThe rule 'every survivor advances a generation' has an upper limit and implementation-specific exceptions. Generation 2 survivors cannot advance beyond generation 2. Being kept through a background collection is not necessarily a new promotion event either. Survival, generation membership, pinning and physical movement are related but separate properties."
+  },
+  {
+    "Id": "gc-013",
+    "Round": "GC overview",
+    "Number": 13,
+    "Topic": "Overview",
+    "Prompt": "Two objects reference each other, but no root reaches either. What happens?",
+    "Options": [
+      "They must implement IDisposable",
+      "Only the first object can be collected",
+      "Both are eligible for collection",
+      "Their cycle keeps both alive permanently"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Tracing GC follows paths from roots. An isolated cycle supplies no such path.\n\nA → B → A is just a cycle of edges. GC needs an entry path from a root, such as a live local, static field or strong handle, to establish that the cycle is reachable. Reference counting would have a particular difficulty with cycles; .NET tracing GC does not rely on reference counts to decide ordinary reachability."
+  },
+  {
+    "Id": "gc-014",
+    "Round": "GC overview",
+    "Number": 14,
+    "Topic": "Overview",
+    "Prompt": "Which statement about Dispose and finalization is correct?",
+    "Options": [
+      "Dispose immediately removes the object from memory",
+      "Dispose provides explicit cleanup; finalization is an unpredictable fallback",
+      "Finalizers always run when a method returns",
+      "GC calls Dispose before each finalizer"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "using or the caller invokes Dispose. A finalizer may run later for an unreachable finalizable object; managed storage is reclaimed separately.\n\nA finalizer does not automatically call your public Dispose method. It executes the finalizer body the developer supplied, which may explicitly call Dispose(false). A using statement invokes Dispose deterministically at scope exit. Running either cleanup method does not erase a managed instance immediately; GC handles its storage separately."
+  },
+  {
+    "Id": "gc-015",
+    "Round": "GC overview",
+    "Number": 15,
+    "Topic": "Overview",
+    "Prompt": "What is the difference between allocation rate and retained memory?",
+    "Options": [
+      "They are always the same measurement",
+      "Allocation rate counts threads; retained memory counts requests",
+      "Allocation rate is bytes created over time; retained memory is bytes still alive",
+      "Retained memory means all reserved address space"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "A program can allocate rapidly yet retain little if most objects die quickly. Root paths explain why retained objects remain alive.\n\nFor example, allocating 500 MB per second can coexist with a stable 50 MB live heap when most objects die quickly. Conversely, modest allocation can slowly fill a static dictionary that retains everything. The first problem suggests examining allocation hotspots and collection cost; the second suggests examining roots, cache policy and object ownership."
+  },
+  {
+    "Id": "gc-016",
+    "Round": "GC overview",
+    "Number": 16,
+    "Topic": "Overview",
+    "Prompt": "Does reclaiming an object guarantee its memory is returned to the OS immediately?",
+    "Options": [
+      "Yes, unless the object was a string",
+      "Yes, byte for byte",
+      "No; the GC can never return memory",
+      "No; GC may keep the space for future allocations"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "GC can retain committed space, decommit backing storage, or release address ranges according to its memory policies.\n\nThere are several layers: dead object space becomes reusable by GC; some pages may remain committed; some may be decommitted; an address reservation may later be released. These actions are not interchangeable. A process memory counter may stay high after collection because the runtime deliberately keeps capacity for future work."
+  },
+  {
+    "Id": "gc-017",
+    "Round": "Deep dive",
+    "Number": 17,
+    "Topic": "Generations",
+    "Prompt": "A generation 0 survivor is usually promoted to which generation?",
+    "Options": [
+      "Generation 1",
+      "The POH",
+      "Generation 2 directly",
+      "The LOH"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Survivors normally advance from generation 0 to 1, then to 2. Pinning and implementation-specific policies can create exceptions.\n\nPromotion is about surviving the collection that examines the object, not simply waiting for time to pass. A rooted object may survive, while a short-lived temporary dies in generation 0. Do not infer that all generation changes copy bytes: nonmoving paths and pinning-related policies can leave addresses unchanged."
+  },
+  {
+    "Id": "gc-018",
+    "Round": "Deep dive",
+    "Number": 18,
+    "Topic": "Generations",
+    "Prompt": "Is an object's age in seconds what determines promotion?",
+    "Options": [
+      "Only wall-clock age matters for generation 2",
+      "No; survival of relevant collections normally drives promotion",
+      "Yes, after a fixed timeout",
+      "Yes, based on its constructor time"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Generations track collection history and policies, rather than elapsed time since construction.\n\nA generation 0 object can remain there until a relevant collection occurs, even if it has existed for a long wall-clock interval. Conversely, rapid collections can promote an object quickly. This distinction matters when interpreting dumps: an old generation suggests collection history, not a reliable construction timestamp. Generation number is not an object-age clock."
+  },
+  {
+    "Id": "gc-019",
+    "Round": "Deep dive",
+    "Number": 19,
+    "Topic": "Generations",
+    "Prompt": "Must promotion always change an object's address?",
+    "Options": [
+      "No, because GC never moves objects",
+      "No; generation membership can change without moving every survivor",
+      "Yes, generation numbers are addresses",
+      "Yes, even when the object is pinned"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Generation membership and physical movement are different. Noncompacting paths can change generation boundaries or metadata while leaving survivors in place.\n\nIn a segment-based heap layout, boundaries can be adjusted on nonmoving paths; other runtime layouts use different metadata. This is not arbitrary relabeling of scattered survivors without rules. Ordinary young-generation collection is paused, so application threads cannot allocate new objects while those paused boundary changes are taking place."
+  },
+  {
+    "Id": "gc-020",
+    "Round": "Deep dive",
+    "Number": 20,
+    "Topic": "Generations",
+    "Prompt": "Are generation 0 and 1 collections background collections?",
+    "Options": [
+      "Always",
+      "No; they pause managed execution, even during a background generation 2 GC",
+      "Yes, if all objects are small",
+      "Only when the process has one CPU"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Young-generation collections are blocking collections. They can interrupt background generation 2 work, then application execution resumes.\n\nStop-the-world means the relevant managed application execution is suspended for the collection. It does not mean every native OS thread must be doing identical work. Background generation 2 marking can be interrupted for a foreground young collection, after which application threads and background work continue."
+  },
+  {
+    "Id": "gc-021",
+    "Round": "Deep dive",
+    "Number": 21,
+    "Topic": "Generations",
+    "Prompt": "Are generation 0 and 1 pauses guaranteed to be very short?",
+    "Options": [
+      "Yes, regardless of heap contents",
+      "No; survivors, roots, pinning and workload affect the cost",
+      "No; they are always slower than generation 2",
+      "Yes, because they never scan references"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Young collections are usually cheaper, but no universal pause-time guarantee exists.\n\nA young heap with many survivors and reference fields takes more work than one whose objects mostly die. Root scanning, pins and coordination also add cost. Calling these collections 'usually fast' describes a common workload pattern, not a contract. Measure pause duration under representative load rather than relying only on the generation label."
+  },
+  {
+    "Id": "gc-022",
+    "Round": "Deep dive",
+    "Number": 22,
+    "Topic": "Generations",
+    "Prompt": "How can a background generation 2 collection include young generations without pausing the application throughout?",
+    "Options": [
+      "All generations become fully concurrent",
+      "Young-generation work can run in separate blocking pauses while much generation 2 work runs in the background",
+      "Generation 1 is ignored forever",
+      "Generation 0 objects cannot be allocated until it ends"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Background collection is not pause-free. Foreground young collections and coordination pauses coexist with concurrent background work.\n\nImagine background generation 2 marking is running while requests keep allocating. Generation 0 fills, a blocking young collection runs, then execution resumes and background work continues. Newly allocated objects are handled by the runtime's background-GC protocol; they are not simply reclaimed because an earlier traversal did not mark them. The whole interval is not one uninterrupted pause."
+  },
+  {
+    "Id": "gc-023",
+    "Round": "Deep dive",
+    "Number": 23,
+    "Topic": "Generations",
+    "Prompt": "What is a write barrier useful for during a young-generation collection?",
+    "Options": [
+      "Deleting unused stack slots",
+      "Moving all old objects automatically",
+      "Pinning every referenced object",
+      "Remembering potentially relevant old-to-young references without scanning every old object"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "Card-table bookkeeping lets GC focus on old heap regions that may contain references into the collected younger generations.\n\nIf rooted old object A points to new object B, collecting only young memory must still discover B. Tracking old regions with potentially young references avoids tracing the entire old graph every time. The write barrier is runtime/compiler-generated reference-store bookkeeping, not code developers normally call explicitly after each assignment."
+  },
+  {
+    "Id": "gc-024",
+    "Round": "Deep dive",
+    "Number": 24,
+    "Topic": "Generations",
+    "Prompt": "After an object is promoted, why might reference bookkeeping still be needed?",
+    "Options": [
+      "Promotion makes every reference weak",
+      "Its fields could still reference younger objects",
+      "Its MethodTable is removed",
+      "All of its fields become static roots"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "A promoted object may hold references to objects that remain younger. GC must preserve appropriate remembered-set information.\n\nAn object's new generation does not rewrite all its children's generations automatically. If A becomes older while B remains younger, A's reference to B still matters at B's next young collection. The collector maintains suitable remembered information; promotion does not mean it can forget all outgoing references from the survivor."
+  },
+  {
+    "Id": "gc-025",
+    "Round": "Deep dive",
+    "Number": 25,
+    "Topic": "Generations",
+    "Prompt": "What is demotion in GC implementations that use it around pinned objects?",
+    "Options": [
+      "Making an object unreachable",
+      "Keeping some survivors in a younger generation under specific GC policies",
+      "Executing its finalizer twice",
+      "Moving every object to the stack"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Some implementations can retain generation membership around pins to avoid problematic layouts. This is a runtime detail, not the normal promotion rule.\n\nSome GC implementations adjust generation membership to accommodate layout around pinned objects. A survivor may remain classified in a younger generation instead of being promoted in the usual way. That does not mean it became unreachable or its address moved backward. Treat this as an implementation detail rather than assuming every current GC layout uses the same policy."
+  },
+  {
+    "Id": "gc-026",
+    "Round": "Deep dive",
+    "Number": 26,
+    "Topic": "Allocation",
+    "Prompt": "What is an allocation context?",
+    "Options": [
+      "The finalizer thread's call stack",
+      "A developer-created queue of all objects",
+      "A thread-associated allocation range with a pointer and limit",
+      "A dictionary containing every GC root"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "The runtime gives a thread an allocation range for fast allocations. Application code normally uses new and does not manage this context directly.\n\nTypically the fast small-object path uses generation 0 allocation space assigned to the thread. It is a range and a pair of positions, not a table of all objects owned by that thread. You do not replace the GC by using an allocation context in application code; the runtime uses it underneath ordinary allocation expressions."
+  },
+  {
+    "Id": "gc-027",
+    "Round": "Deep dive",
+    "Number": 27,
+    "Topic": "Allocation",
+    "Prompt": "Why can the small-object allocation fast path avoid a shared lock?",
+    "Options": [
+      "Every allocation goes to an OS heap lock",
+      "GC disables all other CPUs for each new",
+      "Each thread uses its own assigned allocation range",
+      "Managed threads never run simultaneously"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Threads can advance pointers in their own ranges without contending on one global pointer. Refills require additional coordination.\n\nA shared allocation pointer would need coordination whenever multiple threads tried to advance it. Giving each thread a distinct range avoids that contention on the common fast path. A shared lock here means synchronization around shared allocator state, not the GC mark stack or a COM apartment. Getting a fresh range is a different, slower operation."
+  },
+  {
+    "Id": "gc-028",
+    "Round": "Deep dive",
+    "Number": 28,
+    "Topic": "Allocation",
+    "Prompt": "What does bump-pointer allocation do?",
+    "Options": [
+      "Move all existing objects one byte",
+      "Advance an allocation pointer when there is enough room",
+      "Search every free block for an exact match",
+      "Increase the object's generation on creation"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "The fast path checks available space and advances a pointer. Memory must still satisfy initialization and alignment requirements.\n\nFor example, with pointer 1000, limit 2000 and an aligned allocation of 40 bytes, the allocator can use the next space and advance the pointer. The exact addresses are illustrative. The pointer is allocator state, not an object that is 'built during compaction'; compaction can help create contiguous space that this allocation strategy can use."
+  },
+  {
+    "Id": "gc-029",
+    "Round": "Deep dive",
+    "Number": 29,
+    "Topic": "Allocation",
+    "Prompt": "When a thread's allocation context fills, must GC immediately run?",
+    "Options": [
+      "No; allocation simply overwrites live objects",
+      "Yes, every refill is a collection",
+      "No; the runtime may obtain another range before needing a collection",
+      "Yes, and all generations compact"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Context exhaustion takes a slow path. A refill can succeed without GC if suitable memory and budget are available.\n\nThe slow path may refill a context, acquire or commit space, or trigger GC, depending on runtime state. Therefore, an exhausted context is not proof of memory exhaustion. Also distinguish its current limit from the generation's adaptive collection budget: these are related allocator/GC policies, not one universal threshold."
+  },
+  {
+    "Id": "gc-030",
+    "Round": "Deep dive",
+    "Number": 30,
+    "Topic": "Allocation",
+    "Prompt": "What does increasing a generation's allocation budget generally mean?",
+    "Options": [
+      "Allowing more allocation before its next budget-triggered collection",
+      "Reducing its threshold to zero",
+      "Disabling all collections permanently",
+      "Increasing physical RAM installed in the machine"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "The budget is a policy threshold for allocation, not a promise that a fixed amount of RAM is free.\n\nHigher budget usually means allowing more bytes before that budget-driven trigger, so collections may occur less often. It is not lowering the threshold, reserving the same amount of physical RAM, or guaranteeing no GC until that exact count. Other constraints, including pressure and explicit requests, can cause collection earlier."
+  },
+  {
+    "Id": "gc-031",
+    "Round": "Deep dive",
+    "Number": 31,
+    "Topic": "Allocation",
+    "Prompt": "Why might GC increase a young-generation allocation budget when survival is high?",
+    "Options": [
+      "Frequent collections may do little useful reclamation relative to their cost",
+      "All surviving objects are memory leaks",
+      "It guarantees that no future collection is needed",
+      "High survival proves every object should be pinned"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "A larger budget can amortize collection overhead. Adaptive policy also considers memory limits, efficiency and other runtime signals.\n\nIf many objects survive, repeatedly collecting a tiny budget can scan and move much data for little reclaimed space. A larger budget can improve efficiency. Other objects may still die, but the policy weighs their reclamation against collection cost and memory constraints; high survival alone is neither proof of a leak nor the only input."
+  },
+  {
+    "Id": "gc-032",
+    "Round": "Deep dive",
+    "Number": 32,
+    "Topic": "Allocation",
+    "Prompt": "What is external fragmentation?",
+    "Options": [
+      "A high count of CPU cores",
+      "A managed reference stored in a register",
+      "Many bytes allocated per second",
+      "Free space split into gaps that cannot satisfy a sufficiently large contiguous allocation"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "Total free bytes can be substantial while the largest usable contiguous block is too small for an allocation.\n\nFor instance, two 600-byte gaps separated by a live object do not satisfy one contiguous 1,000-byte allocation, even though their sum is 1,200. Compaction can reduce such gaps when movement is allowed. Fragmentation can exist in any area that has not been effectively compacted, not only where an object is pinned right now."
+  },
+  {
+    "Id": "gc-033",
+    "Round": "Deep dive",
+    "Number": 33,
+    "Topic": "Allocation",
+    "Prompt": "How does allocation from a free list differ from bump allocation?",
+    "Options": [
+      "It always bypasses managed memory",
+      "It finds a suitable reusable free block, potentially splitting it",
+      "It can combine nonadjacent gaps into one contiguous object",
+      "It calls the finalizer of each block"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Free-list allocation can reuse holes produced by sweeping. An unused remainder may stay as a smaller free block.\n\nA 100-byte request might use a 160-byte free block and leave a reusable remainder if the allocator's representation and minimum sizes permit it. Sweeping can build reusable free-space structures; allocation then consumes them. Bump pointers and free lists are allocation mechanisms, not themselves names of GC collection phases."
+  },
+  {
+    "Id": "gc-034",
+    "Round": "Deep dive",
+    "Number": 34,
+    "Topic": "Allocation",
+    "Prompt": "Why can GC represent a dead gap as a special free object?",
+    "Options": [
+      "To give the gap a user finalizer",
+      "To permanently prevent reuse",
+      "To let heap traversal walk over the space correctly",
+      "To make it a strong root"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Heap walkers need a valid representation and size for free space. A free object is GC bookkeeping, not a surviving application object.\n\nA heap walker must know how many bytes to skip between valid live objects. Representing a free gap in a recognized format permits that traversal and later reuse. Seeing Free in a heap-statistics table therefore does not mean there is a user-defined object of that size holding application data or a finalizer waiting to run."
+  },
+  {
+    "Id": "gc-035",
+    "Round": "Deep dive",
+    "Number": 35,
+    "Topic": "Allocation",
+    "Prompt": "Which objects normally go to the large object heap?",
+    "Options": [
+      "All objects with a finalizer",
+      "Every generation 2 object",
+      "Objects at least 85,000 bytes in total allocation size, under the normal threshold",
+      "All boxed integers"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "The usual LOH threshold is 85,000 bytes including overhead, not just array payload. Specialized runtime settings can affect the threshold.\n\nFor an array, object header and array overhead count toward the allocation size, so payload length alone is not the full test. The threshold is normally expressed in bytes, not '85 KB of elements' regardless of element type. LOH membership also does not mean the object is pinned or cannot ever move."
+  },
+  {
+    "Id": "gc-036",
+    "Round": "Deep dive",
+    "Number": 36,
+    "Topic": "Allocation",
+    "Prompt": "Why separate large objects from frequently compacted small objects?",
+    "Options": [
+      "Repeatedly copying large survivors can be expensive",
+      "The LOH stores unmanaged memory only",
+      "Large objects cannot become unreachable",
+      "Large objects never contain references"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Separating them avoids routinely paying large copying costs during young-generation collections.\n\nYoung-generation collections happen frequently because most small objects die quickly. Moving large survivors during each such cycle would consume memory bandwidth for little benefit. Separating the LOH changes collection policy; it is not a claim that a large array has no references or is unmanaged memory. Reference-containing large arrays still need appropriate GC tracing."
+  },
+  {
+    "Id": "gc-037",
+    "Round": "Deep dive",
+    "Number": 37,
+    "Topic": "Allocation",
+    "Prompt": "When is the LOH normally collected?",
+    "Options": [
+      "Only at process shutdown",
+      "After every array assignment",
+      "With generation 2 collections",
+      "With generation 0 only"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "LOH collection is associated with generation 2 collection. LOH is a separate heap, rather than an ordinary part of generation 0.\n\nA full collection can perform different reclamation work in each area. The phrase 'generation 2 includes LOH collection' does not mean LOH is physically the same contiguous range as ordinary generation 2 objects. Likewise, a large array is not allocated in generation 0 first and promoted through every generation."
+  },
+  {
+    "Id": "gc-038",
+    "Round": "Deep dive",
+    "Number": 38,
+    "Topic": "Allocation",
+    "Prompt": "Can .NET compact the LOH?",
+    "Options": [
+      "No, under any circumstances",
+      "Yes; compaction can be requested through LargeObjectHeapCompactionMode for an appropriate full blocking GC",
+      "Only if the objects are converted to strings",
+      "Yes, on every generation 0 collection"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "LOH normally sweeps, but supported runtimes can compact it. Moving LOH survivors also requires updating their references.\n\nFor example, setting GCSettings.LargeObjectHeapCompactionMode to GCLargeObjectHeapCompactionMode.CompactOnce requests LOH compaction on the next applicable full blocking collection. It is not a guarantee that a background collection will move LOH objects concurrently. Pinned objects can still constrain movement, and requesting compaction is not a routine substitute for fixing excessive allocation."
+  },
+  {
+    "Id": "gc-039",
+    "Round": "Deep dive",
+    "Number": 39,
+    "Topic": "Allocation",
+    "Prompt": "Besides GC frequency, what can make allocating a large array expensive?",
+    "Options": [
+      "Reading the class name from source",
+      "Calling IDisposable automatically",
+      "Zero-initializing its memory",
+      "Sorting every root by name"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Managed arrays must have appropriately initialized contents. Clearing a large memory range consumes CPU and memory bandwidth.\n\nEven if allocation-pointer advancement is cheap, preparing a very large array is real memory work. Clearing reference-containing storage is also essential for correct tracing and safe default values. Pooling may avoid repeated allocation/initialization costs in some cases, but borrowers must not assume returned buffers are already cleared."
+  },
+  {
+    "Id": "gc-040",
+    "Round": "Deep dive",
+    "Number": 40,
+    "Topic": "Allocation",
+    "Prompt": "What is a useful alternative when repeatedly needing large temporary buffers?",
+    "Options": [
+      "Reuse buffers with ArrayPool where appropriate",
+      "Keep every allocated array in a static list",
+      "Pin every array forever",
+      "Force a full GC after every buffer"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Pooling can reduce repeated allocation and collection. It can also retain memory, so measure the tradeoff and return buffers correctly.\n\nArrayPool<T>.Shared.Rent(size) can provide a reusable array, often at least the requested length. Use only the intended logical portion and return it in a finally block when finished. Pooling trades fewer allocations for retained reusable capacity; it does not imply the process's memory counter will instantly shrink."
+  },
+  {
+    "Id": "gc-041",
+    "Round": "Deep dive",
+    "Number": 41,
+    "Topic": "Allocation",
+    "Prompt": "After returning a rented array to ArrayPool, what should the caller do?",
+    "Options": [
+      "Call its finalizer",
+      "Stop using it because another caller may rent it",
+      "Continue using it until the next GC",
+      "Assume it has been decommitted"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Returning transfers the array back to the pool. Further use can corrupt another caller's data even though the array still exists.\n\nThe pool may hand the same array to another request immediately after Return. A local variable still referencing that array does not preserve exclusive ownership. This is a use-after-return ownership bug, even though GC memory safety may keep the managed array allocated. Do not retain slices or references for later use after returning it."
+  },
+  {
+    "Id": "gc-042",
+    "Round": "Deep dive",
+    "Number": 42,
+    "Topic": "Allocation",
+    "Prompt": "Why clear some pooled arrays before or when returning them?",
+    "Options": [
+      "To convert the pool into a weak reference",
+      "To remove sensitive data or references that would retain other objects",
+      "To make arrays implement IDisposable",
+      "To promote them to generation 2"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Rented storage can contain old data. Clearing is useful for confidentiality and to avoid keeping referenced objects alive unnecessarily.\n\nFor reference-element arrays, stale entries can keep an entire graph alive while the pool retains the array. For byte or character buffers, old contents can disclose secrets to a later borrower. Select an appropriate clearing policy, such as Return(array, clearArray: true), while accounting for the CPU cost of clearing."
+  },
+  {
+    "Id": "gc-043",
+    "Round": "Deep dive",
+    "Number": 43,
+    "Topic": "Roots & metadata",
+    "Prompt": "Which is a GC root rather than just an ordinary object-graph edge?",
+    "Options": [
+      "Any field in any unreachable object",
+      "A comment containing an object address",
+      "A live managed reference in a register reported by compiler GC information",
+      "The name of a class in a source file"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Live stack/register references, static storage and certain runtime handles can provide roots. Instance fields are traversed through reachable objects.\n\nA root is an entry point for tracing. An instance field is normally an outgoing edge, so it only helps if GC reaches the object containing it. Root categories include reported live stack/register references, static storage and strong runtime handles; finalization machinery can also retain graphs. Weak handles have different reachability rules."
+  },
+  {
+    "Id": "gc-044",
+    "Round": "Deep dive",
+    "Number": 44,
+    "Topic": "Roots & metadata",
+    "Prompt": "A static list contains an object. Why can that object stay alive?",
+    "Options": [
+      "Static references are automatically weak",
+      "Only the object's size determines reachability",
+      "The rooted list supplies a strong reference path to the object",
+      "Static lists are never scanned"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Static storage can root a collection, which in turn retains its elements and their reachable graphs.\n\nFor example, static List<Customer> cache can retain every Customer added to it even after each request finishes. The list's elements can retain still more objects. Making the variable static does not pin these objects; GC may move them while keeping references correct. Unbounded rooted collections are a common managed-memory leak pattern."
+  },
+  {
+    "Id": "gc-045",
+    "Round": "Deep dive",
+    "Number": 45,
+    "Topic": "Roots & metadata",
+    "Prompt": "Why can a long-lived publisher retain event subscribers?",
+    "Options": [
+      "Subscribers become native objects",
+      "An event subscription commonly stores a delegate referencing its subscriber",
+      "Every subscriber is placed in the POH",
+      "Events automatically pin every subscriber"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "A rooted publisher can keep subscriber targets reachable through its delegate list. Unsubscription or appropriate weak-event patterns can break the path.\n\nA subscription such as publisher.Changed += subscriber.OnChanged commonly creates a delegate whose target is subscriber. If the publisher remains rooted, that path can outlive the intended subscriber lifetime. Clearing a local subscriber variable does not remove the subscription. Fix ownership with reliable unsubscription or an appropriate weak-subscription design."
+  },
+  {
+    "Id": "gc-046",
+    "Round": "Deep dive",
+    "Number": 46,
+    "Topic": "Roots & metadata",
+    "Prompt": "Does assigning one variable to null guarantee an object is collectible?",
+    "Options": [
+      "No; null never affects reachability",
+      "Yes, even if another variable references it",
+      "No; other strong reference paths may remain",
+      "Yes, but only in Release builds"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Removing one path does not remove other roots, handle references or reachable object fields pointing to the same instance.\n\nWith var second = first; first = null;, second can still keep the same instance alive while its reference is live. A field, static cache or normal GCHandle can provide yet another path. Setting null neither forces a collection nor calls Dispose, and compiler liveness may already have ended an unused local's root earlier."
+  },
+  {
+    "Id": "gc-047",
+    "Round": "Deep dive",
+    "Number": 47,
+    "Topic": "Roots & metadata",
+    "Prompt": "Can an object's self-reference keep it alive on its own?",
+    "Options": [
+      "No; an external path from a root is still needed",
+      "Yes, until Dispose runs",
+      "Only when the object is an array",
+      "Yes, permanently"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Self-references and isolated cycles are not independent roots in a tracing collector.\n\nIf a rooted variable reaches A, then A is reachable regardless of its self-reference. When the last external root path disappears, A → A does not substitute for it. The same reasoning extends to cycles containing many objects; GC traces from roots rather than counting how many incoming edges an object has."
+  },
+  {
+    "Id": "gc-048",
+    "Round": "Deep dive",
+    "Number": 48,
+    "Topic": "Roots & metadata",
+    "Prompt": "What is an interior reference?",
+    "Options": [
+      "A reference to the object's source file",
+      "A weak reference to a class name",
+      "A reference into the inside of an object, such as a managed reference to an array element",
+      "An address that is always unmanaged"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "A live, GC-tracked interior reference can keep its containing object alive. A reference in an unreachable object does not become a root merely by being interior.\n\nFor example, ref int element = ref array[3] is a managed by-reference into the array. If that by-reference is live in a reported root location, the containing array must survive. Merely having an interior reference stored in an otherwise unreachable graph does not create an independent root. Reachability still starts from actual roots."
+  },
+  {
+    "Id": "gc-049",
+    "Round": "Deep dive",
+    "Number": 49,
+    "Topic": "Roots & metadata",
+    "Prompt": "Does an interior reference always pin its containing object?",
+    "Options": [
+      "No; interior references never keep anything alive",
+      "Yes, until process shutdown",
+      "No; GC can update tracked interior references when the object moves",
+      "Yes, automatically"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Reachability and pinning are separate. GC preserves the interior offset when updating a movable tracked reference.\n\nThe collector can associate the interior reference with its containing object, move the object when permitted, and update the reference with the same relative offset. A fixed block or another pinning mechanism adds a movement constraint. Do not equate 'keeps its containing object alive' with 'must preserve the object's absolute address.'"
+  },
+  {
+    "Id": "gc-050",
+    "Round": "Deep dive",
+    "Number": 50,
+    "Topic": "Roots & metadata",
+    "Prompt": "How does GC know which stack slots and registers contain live references?",
+    "Options": [
+      "It uses GC information generated by the JIT or AOT compiler",
+      "It parses C# source during each collection",
+      "It guesses from every integer that resembles an address",
+      "It treats every stack byte as a strong root"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Compiler-generated GC information describes reference locations and liveness at supported execution positions. AOT is ahead-of-time compilation, distinct from JIT compilation.\n\nThe compiler produces GC information while generating machine code; it does not run its optimizer anew during each GC. Later, the runtime reads that information for the current instruction position to find live references. Dead-code elimination and reference-liveness reporting are different compiler responsibilities. AOT compilation is ahead-of-time, rather than a component of JIT execution."
+  },
+  {
+    "Id": "gc-051",
+    "Round": "Deep dive",
+    "Number": 51,
+    "Topic": "Roots & metadata",
+    "Prompt": "Does source-code scope alone guarantee that a local keeps its target alive?",
+    "Options": [
+      "Yes, until all methods in the class finish",
+      "No; compiler liveness can end before the source scope ends",
+      "No; local variables can never be roots",
+      "Yes, until the closing brace in every build"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Optimized code can stop reporting a reference after its last required use. Source-level scope and runtime liveness differ.\n\nFor example, after the last necessary use of an object, optimized code may no longer report its local as a root even if more statements remain in the same braces. This need not mean the allocation was eliminated from the compiled program. When native-resource lifetime genuinely requires later liveness, GC.KeepAlive is the relevant explicit lifetime tool."
+  },
+  {
+    "Id": "gc-052",
+    "Round": "Deep dive",
+    "Number": 52,
+    "Topic": "Roots & metadata",
+    "Prompt": "What does GC.KeepAlive(obj) do?",
+    "Options": [
+      "Ensures obj stays alive through that point in execution",
+      "Immediately promotes obj to generation 2",
+      "Calls obj.Dispose",
+      "Pins obj's address forever"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "KeepAlive expresses a lifetime requirement. It neither pins the object nor requests a collection.\n\nIn an interop pattern, place GC.KeepAlive(owner) after the operation that requires owner to remain alive. The point is to stop early loss of the managed lifetime, not to stabilize a buffer's address. If native code needs a stable address, an appropriate pin or other ownership mechanism is needed in addition."
+  },
+  {
+    "Id": "gc-053",
+    "Round": "Deep dive",
+    "Number": 53,
+    "Topic": "Roots & metadata",
+    "Prompt": "What is a MethodTable?",
+    "Options": [
+      "Per-type runtime information used for operations including method dispatch and size information",
+      "A table rebuilt by application Dispose methods",
+      "A list of all live object addresses",
+      "The finalizer thread's work stack"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Objects refer to shared type information. The exact structures are implementation details of the CLR.\n\nMethod dispatch means selecting the method implementation to execute, including virtual-call behavior. The object's MethodTable pointer leads to shared runtime type data, not a separate full copy of that data in every instance. 'Type layout' concerns sizes and field/reference organization; it is one aspect of type information, not the whole MethodTable's purpose."
+  },
+  {
+    "Id": "gc-054",
+    "Round": "Deep dive",
+    "Number": 54,
+    "Topic": "Roots & metadata",
+    "Prompt": "What does GCDesc describe in the CLR implementation?",
+    "Options": [
+      "The managed-reference layout needed to trace instances of a type",
+      "All operating-system page protections",
+      "Only the names of virtual methods",
+      "Every source-code statement in a type"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "GCDesc tells the collector where references occur, including relevant array layouts. It is type-associated information, not the full object layout or a copy stored before each instance.\n\nIn the CLR implementations discussed, GCDesc information for types needing it is associated with the MethodTable and stored immediately before it, rather than before every object. The same broad design exists in .NET Framework, though details vary. GCDesc describes where managed references are, not the complete layout, names and values of every field."
+  },
+  {
+    "Id": "gc-055",
+    "Round": "Deep dive",
+    "Number": 55,
+    "Topic": "Roots & metadata",
+    "Prompt": "How do GCInfo and GCDesc differ?",
+    "Options": [
+      "They are two names for the same array",
+      "GCInfo describes roots in compiled frames; GCDesc describes references within heap instances",
+      "GCDesc is emitted for each stack frame",
+      "GCInfo stores free gaps; GCDesc stores pinned handles"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Compiler GC information supports stack/register scanning. Type-associated descriptors support scanning object contents.\n\nImagine a method local points to an Order instance. GCInfo helps find the local/root in compiled execution; then Order's type-associated reference layout helps find fields pointing to its Customer and items. These two metadata sources cooperate. Neither is the mark stack, and GCDesc is not simply another name for MethodTable."
+  },
+  {
+    "Id": "gc-056",
+    "Round": "Deep dive",
+    "Number": 56,
+    "Topic": "Roots & metadata",
+    "Prompt": "Why is scanning an object[] generally different from scanning a byte[]?",
+    "Options": [
+      "The byte array always belongs to native memory",
+      "The object array is always pinned",
+      "The object array has managed reference elements that need tracing",
+      "The byte array must contain a root for every byte"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Reference elements can lead to other live objects. Primitive bytes are not managed references, even if their bit patterns resemble addresses.\n\nA byte value that happens to look like part of an address is still data, not a managed reference. An object array contains references that can extend the reachable graph. An array of value types with reference fields also needs tracing, so the distinction is the element's reference layout, not simply 'class versus struct' as a label."
+  },
+  {
+    "Id": "gc-057",
+    "Round": "Deep dive",
+    "Number": 57,
+    "Topic": "Roots & metadata",
+    "Prompt": "An array contains structs with string fields. Does GC need to scan those fields?",
+    "Options": [
+      "Yes, the struct elements contain managed references",
+      "No, structs can never contain references",
+      "Only if the structs implement IDisposable",
+      "Only when the strings exceed the LOH threshold"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Value types can contain reference fields. Their reference layout is part of the containing object's tracing information.\n\nA struct is a value type, but a field of type string is still a reference to a string object. Copying that struct copies the reference value as part of the value; it does not clone the string. The containing array is a heap object whose embedded reference fields GC must trace using the element layout."
+  },
+  {
+    "Id": "gc-058",
+    "Round": "Deep dive",
+    "Number": 58,
+    "Topic": "Roots & metadata",
+    "Prompt": "What is a card table used for?",
+    "Options": [
+      "Storing the finalizer body for each object",
+      "Recording every object's source-code line",
+      "Tracking heap regions that may contain references relevant to collection",
+      "Holding application call stacks"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Cards summarize regions of heap memory. A dirty card is not a precise list of individual changed references.\n\nA write barrier can record that an old heap region may contain a reference to a young object. Later young collection scans the relevant areas instead of the entire old heap. A card table does not locate planned plug destinations like a brick table, and a dirty card is not a liveness mark for every object it overlaps."
+  },
+  {
+    "Id": "gc-059",
+    "Round": "Deep dive",
+    "Number": 59,
+    "Topic": "Roots & metadata",
+    "Prompt": "Does a dirty card identify exactly one changed object?",
+    "Options": [
+      "Yes; cards and objects are always the same size",
+      "No; cards refer only to CPU registers",
+      "Yes, but only for arrays",
+      "No; a card covers a memory range that may overlap multiple objects"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "Objects and card boundaries need not match. An object can also span multiple cards, and scanning needs appropriate object-boundary information.\n\nA small object can share a card with neighbors, and a large object can span many cards. The collector needs enough boundary/type information to scan valid reference fields in the range. This explains why a region-level dirty record cannot directly answer 'which object just became live?' without further reference processing."
+  },
+  {
+    "Id": "gc-060",
+    "Round": "Deep dive",
+    "Number": 60,
+    "Topic": "Roots & metadata",
+    "Prompt": "Are stack/register changes normally recorded as dirty heap cards?",
+    "Options": [
+      "No, because stacks never contain references",
+      "Yes, every local assignment dirties the heap card table",
+      "No; heap write bookkeeping and root scanning are different mechanisms",
+      "Yes, but only on STA threads"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Roots are examined using runtime/compiler support at appropriate pauses. Heap card or write-watch tracking concerns heap writes, not a card table over all registers.\n\nDuring a coordinated pause, compiler GC information and runtime stack/register handling identify roots at the current execution positions. Background collection uses additional protocols for evolving roots and allocations. There is no ordinary heap write barrier that marks a card for every register assignment, and a barrier does not prohibit GC from revisiting the recorded region."
+  },
+  {
+    "Id": "gc-061",
+    "Round": "Deep dive",
+    "Number": 61,
+    "Topic": "Marking",
+    "Prompt": "What is a mark stack?",
+    "Options": [
+      "The table of all free blocks",
+      "The application's native call stack",
+      "A GC work structure containing references or objects still to trace",
+      "A list of loaded DLL names"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "The mark stack manages traversal work. It is distinct from both the native call stack and the structure recording which objects are already marked.\n\nThe native call stack holds return addresses and frames for executing native/machine-code calls. The mark stack is the collector's explicit traversal worklist. Separately, a mark array/bitmap records discovered liveness; popping a work item does not remove the object's liveness mark or mean its finalizer is ready."
+  },
+  {
+    "Id": "gc-062",
+    "Round": "Deep dive",
+    "Number": 62,
+    "Topic": "Marking",
+    "Prompt": "Why use an explicit mark work stack instead of recursively following arbitrary object graphs on the native stack?",
+    "Options": [
+      "To avoid uncontrolled native call-stack growth",
+      "To make every object pinned",
+      "To eliminate the need for roots",
+      "To force every collection to compact"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Deep or complex graphs could exhaust a recursive call stack. The GC uses explicit work management and overflow recovery mechanisms.\n\nA long chain such as A → B → C and onward could require huge recursive depth. An explicit worklist gives the collector control over storage and recovery. It is still finite, so overflow handling remains necessary; avoiding recursive calls is not a promise that an arbitrarily large graph needs no extra traversal bookkeeping."
+  },
+  {
+    "Id": "gc-063",
+    "Round": "Deep dive",
+    "Number": 63,
+    "Topic": "Marking",
+    "Prompt": "What happens when marking reaches an already marked object?",
+    "Options": [
+      "The object is automatically promoted at that moment",
+      "The object becomes garbage",
+      "GC can normally skip redundant traversal",
+      "Its entire graph must always be traced again immediately"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Recorded marks prevent unnecessary repeated traversal and make cycles manageable. Special concurrent rescanning can still require revisiting references.\n\nIn a cycle A → B → A, once A is marked, reaching it from B need not start the whole traversal again. Marking is not the act that promotes an object to the next generation. During concurrent GC, changed outgoing references can require special rescanning, even though the source object's liveness has already been established."
+  },
+  {
+    "Id": "gc-064",
+    "Round": "Deep dive",
+    "Number": 64,
+    "Topic": "Marking",
+    "Prompt": "How does a marking-state array differ from a mark stack?",
+    "Options": [
+      "The stack records all OS processes",
+      "The array records marking state; the stack records pending traversal work",
+      "Both are application call stacks",
+      "The array contains only finalizer methods"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "These serve different purposes. Exact bitmap, array and mark-list structures vary by runtime version and GC path.\n\nA useful distinction is 'what we know is live' versus 'what we still need to examine.' The mark stack is the latter. Some GC algorithms also use address-ordered survivor information for planning, which should not be confused with a native call stack. Structure names and representations can vary across GC versions and collection modes."
+  },
+  {
+    "Id": "gc-065",
+    "Round": "Deep dive",
+    "Number": 65,
+    "Topic": "Marking",
+    "Prompt": "What does mark-stack overflow handling accomplish?",
+    "Options": [
+      "Skips all roots for the rest of the process",
+      "Recovers traversal work so reachable objects are not missed",
+      "Automatically pins the heap",
+      "Deletes remaining unvisited objects immediately"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Collectors need a safe recovery strategy when a finite work structure fills. Recovery may involve rescanning; overflow must not permit live-object reclamation.\n\nOverflow cannot safely mean 'stop marking and assume remaining objects are dead.' The implementation must preserve or reconstruct enough work to finish discovering the reachable graph, potentially with rescanning. The exact recovery algorithm is an internals detail. It trades extra work for correctness rather than turning remaining references into weak references."
+  },
+  {
+    "Id": "gc-066",
+    "Round": "Deep dive",
+    "Number": 66,
+    "Topic": "Marking",
+    "Prompt": "During an unfinished mark phase, what does an unmarked object mean?",
+    "Options": [
+      "It must be in generation 0",
+      "It has not yet been established as live by marking",
+      "Its finalizer has completed",
+      "It is definitely garbage already"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Unmarked state alone is inconclusive until required tracing and special processing finish. Some objects simply have not been reached yet.\n\nOnly after the necessary traversal and runtime special processing can the collector decide which objects may be reclaimed for that collection. This includes accounting for finalization and concurrent changes. During background marking, new objects and changed references follow the runtime's allocation/barrier protocol; an unfinished mark state must not be interpreted as a free-space map."
+  },
+  {
+    "Id": "gc-067",
+    "Round": "Deep dive",
+    "Number": 67,
+    "Topic": "Marking",
+    "Prompt": "What usually increases marking cost?",
+    "Options": [
+      "Only whether a type name is long",
+      "More reachable objects and reference edges to traverse",
+      "Only the number of free bytes",
+      "Only the size of the executable file"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Marking follows the live reference graph. Roots, reference-rich objects and other collection details also affect its cost.\n\nA million live objects linked by references generally require more tracing than a small live set, even if both processes reserved the same address range. Primitive payload bytes do not each create a graph edge. Profiling should distinguish live graph size, allocation rate and fragmentation, because they affect different parts of GC cost."
+  },
+  {
+    "Id": "gc-068",
+    "Round": "Deep dive",
+    "Number": 68,
+    "Topic": "Marking",
+    "Prompt": "Why is concurrent marking harder than marking while application threads are paused?",
+    "Options": [
+      "Objects stop having type information",
+      "The reference graph can change during traversal",
+      "Concurrent marking cannot use roots",
+      "Every object becomes a weak reference"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Application writes can create or remove edges while marking is underway. GC uses barriers, tracking and coordination to preserve correctness.\n\nFor example, GC scans A, then the application changes A.Child. If that change matters to liveness, the collector must not miss the new target just because it already visited A. Tracking plus coordination closes this gap. Background GC still has pauses; 'concurrent' does not mean every phase can ignore application mutations."
+  },
+  {
+    "Id": "gc-069",
+    "Round": "Deep dive",
+    "Number": 69,
+    "Topic": "Marking",
+    "Prompt": "What is floating garbage?",
+    "Options": [
+      "A free block returned to Windows",
+      "An object already marked live that becomes unreachable before that collection finishes",
+      "An object whose address is invalid",
+      "Every object in generation 0"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "The collector may keep its earlier mark and reclaim the object in a later collection. Becoming unreachable does not normally cause immediate unmarking.\n\nSuppose rooted A references B, GC marks B, and then A.Child is set to null with no other path to B. B may stay marked for this cycle even though it is now garbage. GC normally does not erase the mark and recursively subtract references. Keeping B until a later collection is safe; reclaiming an unrecognized live object would not be.\n\nThe collector is not reference counting: one edge disappearing does not prove that all other paths disappeared. Even if none remain, retaining an earlier mark is permitted for this collection. This is the key reason a dirty-region revisit does not promise to discover and immediately remove all floating garbage."
+  },
+  {
+    "Id": "gc-071",
+    "Round": "Deep dive",
+    "Number": 70,
+    "Topic": "Marking",
+    "Prompt": "A scanned object gains a reference to a not-yet-marked target during concurrent marking. What is needed?",
+    "Options": [
+      "Immediate deletion of the target",
+      "Mutation tracking and appropriate revisiting so the target is not missed",
+      "Promoting the target without tracking any references",
+      "Ignoring the write because the source was scanned"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Write barriers or write-watch mechanisms record relevant changes. GC revisits affected references and marks newly discovered reachable targets.\n\nFor a concrete race, A was scanned while A.Child was null; another valid path still held B, then code assigned A.Child = B. Tracking allows the collector to revisit relevant references without rebuilding the entire graph from every root for each write. B was not magically obtained from unreachable bytes; the assignment had a valid source reference."
+  },
+  {
+    "Id": "gc-072",
+    "Round": "Deep dive",
+    "Number": 71,
+    "Topic": "Marking",
+    "Prompt": "In write tracking, which memory region is associated with C.Member = B?",
+    "Options": [
+      "The finalizer thread's native stack",
+      "Always the target B's entire generation",
+      "The source-code file containing the assignment",
+      "The source field's storage region in C"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "The write occurs at C.Member. Tracking where the source field changed helps GC revisit relevant outgoing references; it does not fence the region off from scanning.\n\nIf C.Member is a heap reference field, the write changes memory inside C, so that source location is what region-based tracking records. B need not occupy the same card or generation. GC can later inspect the updated field and discover B. A write barrier records/maintains information; it is not a wall that prevents rescanning."
+  },
+  {
+    "Id": "gc-073",
+    "Round": "Deep dive",
+    "Number": 72,
+    "Topic": "Marking",
+    "Prompt": "Does rescanning a dirty heap region make every object in that region live?",
+    "Options": [
+      "No; dirty regions can never be scanned",
+      "Yes, all bytes there become roots",
+      "Yes, and every object is promoted",
+      "No; GC follows relevant references using its marking rules"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "Dirty tracking identifies where references need attention. It does not independently establish that every object occupying those addresses is reachable.\n\nA dirty region tells GC where references may need re-examination, not that every resident object now has a root. The marking algorithm considers its live-source and rescan rules, then traces discovered targets. It does not have to trace every root separately for each object in the region to ask whether that object is live."
+  },
+  {
+    "Id": "gc-074",
+    "Round": "Deep dive",
+    "Number": 73,
+    "Topic": "Marking",
+    "Prompt": "Can safe managed code acquire a completely unreachable object merely because its bytes still exist in the heap?",
+    "Options": [
+      "Yes, using an ordinary new variable with no source reference",
+      "Yes, if it has no finalizer",
+      "Yes, by naming its class",
+      "No; obtaining it requires some valid access path or runtime mechanism"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "An assignment needs an existing valid reference source. Unreachable bytes are not a managed API for rediscovering an object; weak-handle retrieval is a separate coordinated mechanism.\n\nThe code C.Member = B requires a valid way to obtain B, such as a live local or another accessible field. If literally no such reachable path exists, ordinary safe code cannot just rediscover the instance by guessing its old address. A weak reference is a special coordinated retrieval mechanism, not a loophole allowing arbitrary references to reclaimed objects."
+  },
+  {
+    "Id": "gc-075",
+    "Round": "Deep dive",
+    "Number": 74,
+    "Topic": "Marking",
+    "Prompt": "Are mark bits and dirty-write tracking the same information?",
+    "Options": [
+      "No; marks record discovered liveness, while dirty tracking records changed memory regions",
+      "Yes, both only record reachability",
+      "Yes, both store object source code",
+      "No; neither is used during background GC"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "A region can be dirty without all its objects being live. A marked object can later become unreachable and remain floating garbage.\n\nConsider a live object with a changed field: its mark may already be set and its card may now be dirty. Conversely, a previously marked object can lose its last reference yet keep its mark for this cycle. These independent facts are why 'unmarked and dirty' is not itself a complete reachability explanation."
+  },
+  {
+    "Id": "gc-076",
+    "Round": "Deep dive",
+    "Number": 75,
+    "Topic": "Planning",
+    "Prompt": "What is a plug in GC planning?",
+    "Options": [
+      "A thread waiting for a lock",
+      "A weak reference that became null",
+      "A chunk of unmanaged executable code",
+      "A contiguous run of surviving objects treated as a unit during planning"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "Grouping survivors into plugs helps describe gaps and planned movements. Pinning can constrain how plugs are moved.\n\nFor example, adjacent surviving objects A, B and C can form one plug, with dead gaps before and after. A planned displacement can describe their movement as a unit when permitted. A pinned survivor can constrain plug organization. A plug is not a generation, and its tree/index structures are distinct from the application's object graph."
+  },
+  {
+    "Id": "gc-077",
+    "Round": "Deep dive",
+    "Number": 76,
+    "Topic": "Planning",
+    "Prompt": "How can sorted survivor information help planning?",
+    "Options": [
+      "It makes every object a root",
+      "It guarantees finalization order",
+      "It helps identify adjacent survivors and gaps in address order",
+      "It eliminates all pinned objects"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Address-ordered information helps build plugs and calculate reclaimable gaps. Data structures differ among GC implementations and paths.\n\nIf survivor addresses are in order, planning can recognize where one run ends and a dead gap begins. That supports plug construction and destination calculations. It does not guarantee that every implementation stores the same kind of mark list, nor does it determine the order in which unrelated finalizers execute."
+  },
+  {
+    "Id": "gc-078",
+    "Round": "Deep dive",
+    "Number": 77,
+    "Topic": "Planning",
+    "Prompt": "What is a brick table used for in GC planning?",
+    "Options": [
+      "Helping locate relevant object/plug information from a heap address region",
+      "Recording all event subscriptions",
+      "Choosing the thread-pool minimum",
+      "Storing the application's SQL queries"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Bricks provide an address-based index into heap/plug information. They are not the remembered-set card table.\n\nThink of a brick as an address-region lookup aid: given a reference address, the collector needs to find the applicable plug information efficiently in the relevant algorithm. A card table answers a different question about possibly changed reference regions. Updating either kind of bookkeeping is not a substitute for relocating the actual root or field reference."
+  },
+  {
+    "Id": "gc-079",
+    "Round": "Deep dive",
+    "Number": 78,
+    "Topic": "Planning",
+    "Prompt": "How does a plug tree differ from a brick table in GC implementations that use them?",
+    "Options": [
+      "A plug tree stores only strings",
+      "They are both lists of OS handles",
+      "A brick table stores the finalizer queue",
+      "A plug tree organizes plugs for lookup; a brick table indexes heap address regions"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "They cooperate in lookup but are different structures. Their construction and maintenance are implementation details, not a substitute for updating actual references.\n\nA brick index narrows the search by address region; plug-tree information organizes the plug records needed by that algorithm. They should not be treated as one table where changing either automatically repairs every pointer. Avoid making a universal claim about which phase rewrites every entry: the precise maintenance protocol depends on the implementation and GC path."
+  },
+  {
+    "Id": "gc-080",
+    "Round": "Deep dive",
+    "Number": 79,
+    "Topic": "Planning",
+    "Prompt": "Can planning choose compaction even when one pending allocation would fit?",
+    "Options": [
+      "Yes; fragmentation, memory pressure and overall cost can still justify it",
+      "Only if all objects are weakly referenced",
+      "No; that single allocation is the only factor",
+      "Only if Dispose was called"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Planning considers the broader heap and policy goals. Fitting one object does not establish that compaction is unnecessary.\n\nA pending object fitting in one gap says little about the rest of the heap. Many small holes, memory pressure or opportunities to reduce committed space can change the decision. Compaction has a cost too, so there is no rule that pressure always means compact everything; planning balances expected benefit and constraints."
+  },
+  {
+    "Id": "gc-081",
+    "Round": "Deep dive",
+    "Number": 80,
+    "Topic": "Planning",
+    "Prompt": "If moving survivors would cost much and sweeping yields usable space, what might GC choose?",
+    "Options": [
+      "Promote all survivors to the LOH",
+      "Run application finalizers inside marking",
+      "Sweep instead of compacting that area",
+      "Always copy every survivor twice"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Sweeping can avoid moving cost when its space-reclamation benefit is sufficient. The decision is policy-dependent.\n\nFor example, copying many megabytes of survivors may cost more than keeping them in place and reusing large existing gaps. Sweeping still needs valid free-space bookkeeping and coordination. A collection may sweep one area while compacting another, so the decision need not apply identically to SOH, LOH and pinned areas."
+  },
+  {
+    "Id": "gc-082",
+    "Round": "Deep dive",
+    "Number": 81,
+    "Topic": "Sweeping",
+    "Prompt": "What happens to adjacent dead blocks during sweeping?",
+    "Options": [
+      "They are converted to static fields",
+      "Their finalizers always execute synchronously",
+      "They must become separate pinned objects",
+      "They may be coalesced into a larger free block"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "Coalescing adjacent gaps can satisfy larger future allocations. Blocks separated by a live object cannot simply be merged into contiguous space.\n\nTwo neighboring dead blocks can form one larger usable gap, but two gaps separated by a live object cannot become a contiguous block without moving that object. This matters when an allocation fails despite enough total free bytes. Free-space coalescing is not the same operation as calling the dead object's finalizer."
+  },
+  {
+    "Id": "gc-083",
+    "Round": "Deep dive",
+    "Number": 82,
+    "Topic": "Sweeping",
+    "Prompt": "Does sweeping execute object finalizers as it encounters dead objects?",
+    "Options": [
+      "Only for IDisposable objects",
+      "Only on generation 0",
+      "Yes, directly on the sweeping thread",
+      "No; finalization is separate runtime processing"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "Unreachable finalizable objects are handled through finalization machinery. Sweeping reclaims space that is safe to reclaim.\n\nA finalizable object needing its finalizer cannot simply be reclaimed as an ordinary dead gap. Finalization processing retains it appropriately and the finalizer thread executes the cleanup body later. That body may explicitly call Dispose(false), but neither the sweeping algorithm nor the GC automatically invokes public Dispose because IDisposable is implemented."
+  },
+  {
+    "Id": "gc-084",
+    "Round": "Deep dive",
+    "Number": 83,
+    "Topic": "Sweeping",
+    "Prompt": "What must concurrent sweeping coordinate with?",
+    "Options": [
+      "Allocation so free space is published and reused safely",
+      "C# source formatting",
+      "The Windows wallpaper",
+      "The order of virtual method declarations"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "The allocator and collector must not allocate from space before it is safely available. Synchronization protects free-space bookkeeping.\n\nFor example, a background sweeper must not let an allocating thread consume a block whose free-space representation is still being constructed or modified unsafely. The coordination concerns allocator data and ownership of reusable space. It is not a requirement for application developers to put locks around every new expression."
+  },
+  {
+    "Id": "gc-085",
+    "Round": "Deep dive",
+    "Number": 84,
+    "Topic": "Relocation & compaction",
+    "Prompt": "Which locations may need reference updates after a target moves?",
+    "Options": [
+      "Only source-code local variable names",
+      "Only the MethodTable",
+      "Only free-list nodes",
+      "Live stack/register roots, handles and references in heap objects"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "GC must update all relevant tracked reference locations. Brick tables and plug information help locate destinations but are not the references themselves.\n\nFor example, a stack local and A.Child can both refer to the same moving B; both must be valid afterward. Normal handles and relevant surviving weak handles also need correct target references. The compiler/runtime preserve and update reported register roots appropriately during suspension. Object type metadata is not a central replacement for these actual references.\n\nThe root/reference graph remains valid because the previous moving collection repaired the tracked references before application execution continued. The next mark phase therefore does not need stale brick or plug data to 'guess' where objects went. Such indexes support internal algorithms; they are not the sole source of truth for all application reference values."
+  },
+  {
+    "Id": "gc-086",
+    "Round": "Deep dive",
+    "Number": 85,
+    "Topic": "Relocation & compaction",
+    "Prompt": "An interior reference points 16 bytes into a moving object. What should its relocated value preserve?",
+    "Options": [
+      "The offset within the object's new location",
+      "Only the object's type name",
+      "A pointer into an unrelated free block",
+      "The old absolute address regardless of movement"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Updating the base while preserving the interior offset keeps the reference pointing to the same logical part of the object.\n\nIf the containing object's new base is 2000, an interior pointer previously 16 bytes into it must refer to 2016, using simplified illustrative addresses. This is one reason GC must locate the containing object or plug. The interior reference can keep the object alive without requiring its original absolute address to remain fixed."
+  },
+  {
+    "Id": "gc-087",
+    "Round": "Deep dive",
+    "Number": 86,
+    "Topic": "Relocation & compaction",
+    "Prompt": "During ordinary moving compaction in .NET, can application threads freely mutate those references at the same time?",
+    "Options": [
+      "Yes, as long as the object is in generation 0",
+      "Yes, because all reference writes are ignored",
+      "No; this work runs with managed execution paused",
+      "Only finalizer threads may move them"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "The collector coordinates suspension for reference relocation and moving compaction. Background GC does not imply concurrent object movement.\n\nThe background-GC setting does not make .NET's moving compaction fully concurrent. The runtime suspends appropriate managed execution while it performs movement and repairs references. Otherwise an application could observe inconsistent old and new locations. Concurrent marking/sweeping mechanisms solve different overlap problems and should not be generalized to every phase."
+  },
+  {
+    "Id": "gc-089",
+    "Round": "Deep dive",
+    "Number": 87,
+    "Topic": "Relocation & compaction",
+    "Prompt": "Does assigning obj.Field = other move the target object?",
+    "Options": [
+      "No; it changes a reference value, not the target's physical address",
+      "Yes, it promotes the target to generation 2",
+      "Yes, it copies the target into obj",
+      "No, because all objects are pinned"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "An ordinary reference assignment changes an edge in the graph. GC movement is a separate operation.\n\nFor a class reference assignment, obj.Field now points to the same target as other; it does not copy the target's fields into obj. The target can later move during a GC, and the collector then maintains references. Struct assignment copies a value and may copy reference-valued fields inside that value, which is a different operation."
+  },
+  {
+    "Id": "gc-090",
+    "Round": "Deep dive",
+    "Number": 88,
+    "Topic": "Relocation & compaction",
+    "Prompt": "If a collection sweeps an area without moving its survivors, is a moving relocation pass needed for those survivors?",
+    "Options": [
+      "Yes, and every survivor moves to the stack",
+      "Only for byte arrays",
+      "No; their unchanged addresses need no movement-related reference adjustment",
+      "Yes, every pointer must change anyway"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "A nonmoving sweep does not require computing new addresses for its survivors. Other bookkeeping and collection work still occur.\n\nThe collection still needs to identify survivors and safely make dead gaps reusable. 'No relocation for unchanged addresses' does not mean 'no planning or marking needed.' If another area in the same collection is compacted, references to objects moved there still need appropriate treatment even though this particular area's survivors stayed in place."
+  },
+  {
+    "Id": "gc-091",
+    "Round": "Deep dive",
+    "Number": 89,
+    "Topic": "Pinning",
+    "Prompt": "What does pinning guarantee while the pin is active?",
+    "Options": [
+      "Its finalizer runs immediately",
+      "The object cannot move",
+      "The object can never be collected after the pin ends",
+      "Its generation number is permanently zero"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Pinning constrains movement. Specific pinning mechanisms also provide lifetime guarantees while active, but those guarantees end when the pin does.\n\nA fixed statement or pinned GCHandle can establish a pin; appropriate APIs can also allocate pinned storage. When the pin ends, the object may move in a later moving collection. A normal GCHandle or GC.KeepAlive keeps a target alive but does not provide the same stable-address guarantee."
+  },
+  {
+    "Id": "gc-092",
+    "Round": "Deep dive",
+    "Number": 90,
+    "Topic": "Pinning",
+    "Prompt": "Why can pinning increase fragmentation?",
+    "Options": [
+      "Every pin creates a second LOH",
+      "Pinned objects become larger each second",
+      "Pinned survivors can prevent GC from packing nearby movable survivors together",
+      "Pins force all free space back to the OS"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Pins can leave holes around immovable objects in compacted heaps. The impact depends on pin duration, placement and workload.\n\nImagine two pinned survivors with dead space around them. The collector cannot freely slide those survivors together to combine all the gaps. The POH reduces this problem for supported pinned allocations, but it does not retroactively move existing SOH/LOH pins into the POH or eliminate fragmentation in every area."
+  },
+  {
+    "Id": "gc-093",
+    "Round": "Deep dive",
+    "Number": 91,
+    "Topic": "Pinning",
+    "Prompt": "Does pinning an existing object move it into the POH?",
+    "Options": [
+      "No; it normally stays in its existing heap",
+      "Only if it is a string",
+      "Only if it has a finalizer",
+      "Yes, immediately"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "The POH supports particular pinned allocation APIs in modern .NET. Pinning an existing allocation does not migrate it there.\n\nFor example, GCHandle.Alloc(existingArray, GCHandleType.Pinned) pins that already allocated array where it is. By contrast, supported pinned allocation APIs can choose POH storage from the start. Pinning and promotion are separate: being immovable does not universally mean the object must remain generation 0 forever."
+  },
+  {
+    "Id": "gc-094",
+    "Round": "Deep dive",
+    "Number": 92,
+    "Topic": "Pinning",
+    "Prompt": "What is the purpose of the pinned object heap in modern .NET?",
+    "Options": [
+      "Make all heap objects permanently pinned",
+      "Isolate supported pinned allocations to reduce their impact on compacting heaps",
+      "Store every stack local",
+      "Replace the finalization queue"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "The POH reduces some fragmentation problems, but ordinary SOH/LOH pinning still exists. It was introduced in .NET 5 and is not a .NET Framework feature.\n\nFor a suitable reference-free array, GC.AllocateArray<byte>(length, pinned: true) is an example of an explicitly pinned allocation API. This is different from pinning a preexisting array with fixed. The POH still needs collection and space management; separating pinned allocations does not promise zero memory retention or zero fragmentation."
+  },
+  {
+    "Id": "gc-095",
+    "Round": "Deep dive",
+    "Number": 93,
+    "Topic": "Pinning",
+    "Prompt": "When does a C# fixed statement's pin normally end?",
+    "Options": [
+      "When a new generation is created",
+      "After every possible finalizer has run",
+      "When the fixed block ends",
+      "Only after process shutdown"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "fixed provides a scoped pin. A native pointer must not be used beyond the valid pinned lifetime.\n\nAfter leaving the block, a raw native pointer obtained inside it must not be used as though the managed object is still pinned. Native code retaining a pointer requires an ownership/lifetime scheme that covers its entire use. Keeping a managed reference alive alone prevents collection but does not by itself prevent movement."
+  },
+  {
+    "Id": "gc-096",
+    "Round": "Deep dive",
+    "Number": 94,
+    "Topic": "Handles & weak references",
+    "Prompt": "What does GCHandleType.Normal do?",
+    "Options": [
+      "Runs Dispose when the handle is created",
+      "Pins the target in generation 0",
+      "Makes its reference weak",
+      "Keeps the target alive while allowing it to move"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "A normal GC handle supplies a strong runtime root. It does not promise a stable target address.\n\nFor example, GCHandle h = GCHandle.Alloc(item, GCHandleType.Normal) adds a strong handle root until h.Free(). Setting the original item variable to null does not remove that root. The target can move; the runtime updates the handle's target information. Normal does not mean a weak reference or a pinned native address."
+  },
+  {
+    "Id": "gc-097",
+    "Round": "Deep dive",
+    "Number": 95,
+    "Topic": "Handles & weak references",
+    "Prompt": "Is a GCHandle value a direct stable pointer to its target object?",
+    "Options": [
+      "Yes; and it is a C# string",
+      "No; it represents a runtime handle entry that refers to the target",
+      "No; it contains the entire object inline",
+      "Yes; it is the object's raw address"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "The handle and object address are different. The runtime can update the target reference when the object moves; pinned handles have additional address-related APIs.\n\nA GCHandle is a value-type wrapper representing a runtime handle, not a string reference and not the target stored inline. GCHandle.ToIntPtr can provide an opaque token for passing that handle through native code; the token is not permission to dereference it as the object's raw memory address. Access the target through the supported handle API."
+  },
+  {
+    "Id": "gc-098",
+    "Round": "Deep dive",
+    "Number": 96,
+    "Topic": "Handles & weak references",
+    "Prompt": "What can happen if a pinned GCHandle is never freed?",
+    "Options": [
+      "Its target can remain rooted and pinned, increasing retention and fragmentation",
+      "The target automatically becomes weak",
+      "The runtime always throws at allocation time",
+      "The handle frees itself at the next GC"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "GCHandle ownership must be managed carefully. Free releases the handle's root/pin; it does not directly delete the managed target.\n\nFree the handle exactly according to its ownership, often with try/finally, once native use is finished. Copies of a GCHandle struct do not create independent target ownership automatically; double-freeing through aliases is also unsafe. A pinned root can keep a large graph or buffer around even when no application local still refers to it."
+  },
+  {
+    "Id": "gc-099",
+    "Round": "Deep dive",
+    "Number": 97,
+    "Topic": "Handles & weak references",
+    "Prompt": "After freeing a normal GCHandle, must the developer call GC.Collect to delete its target?",
+    "Options": [
+      "Yes, but only on a finalizer thread",
+      "Yes, every handle needs manual collection",
+      "No; freeing the handle already calls the object's destructor immediately",
+      "No; if no other strong path remains, a future GC can reclaim it"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "Removing the handle removes that root. Remaining references and finalization determine eligibility; collection timing remains under GC policy.\n\nh.Free() removes that handle entry, not every other reference to the target. If a static cache still contains item, the target remains alive. If no path remains, GC can handle reclamation under normal policy, possibly after finalization. Calling GC.Collect is not the manual counterpart of freeing each handle."
+  },
+  {
+    "Id": "gc-100",
+    "Round": "Deep dive",
+    "Number": 98,
+    "Topic": "Handles & weak references",
+    "Prompt": "Do either short or resurrection-tracking weak references keep their targets alive on their own?",
+    "Options": [
+      "Both do",
+      "Only resurrection-tracking references do",
+      "Neither does",
+      "Only short references do"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Both are weak. Retrieving a target into a live local creates a strong reference while that local remains live.\n\nBoth weak-reference forms can lose their targets. If weak.TryGetTarget(out var target) succeeds, target is an ordinary strong reference while it remains live. That temporary strong reference can now extend the object's lifetime; the weak reference itself has not changed into a permanently strong one."
+  },
+  {
+    "Id": "gc-101",
+    "Round": "Deep dive",
+    "Number": 99,
+    "Topic": "Handles & weak references",
+    "Prompt": "What does trackResurrection: true change?",
+    "Options": [
+      "It allows the weak reference to continue tracking through finalization until later reclamation",
+      "It pins the target",
+      "It guarantees the target will resurrect",
+      "It makes the target a permanent static root"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "A long weak reference can retrieve an object whose finalizer has run. That object's resources may already have been released.\n\nA short weak reference is cleared when its target is identified for the relevant reclamation/finalization processing, before the original finalization runs. A resurrection-tracking weak reference can continue to report the object afterward until later collection clears it. The flag does not re-register the finalizer, create a root, or guarantee actual resurrection."
+  },
+  {
+    "Id": "gc-102",
+    "Round": "Deep dive",
+    "Number": 100,
+    "Topic": "Handles & weak references",
+    "Prompt": "A short weak reference's TryGetTarget returns false. What does that establish?",
+    "Options": [
+      "The target must never have had a finalizer",
+      "That weak reference cannot provide its target; finalization and reclamation timing are not established",
+      "The target's memory has definitely been returned to the OS",
+      "The finalizer definitely completed"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Short weak references are cleared when appropriate before finalization. Observing false later does not tell you whether the finalizer has since run or storage has been reclaimed.\n\nThe clearing event precedes that finalization, but your observation can occur later, after the finalizer has or has not run. There is no contradiction between these statements. Therefore false is not a finalizer-completed signal or proof that memory was returned to Windows. Null targets, explicit target changes and unusual reuse scenarios can further affect observations."
+  },
+  {
+    "Id": "gc-103",
+    "Round": "Deep dive",
+    "Number": 101,
+    "Topic": "Handles & weak references",
+    "Prompt": "Why can TryGetTarget return true immediately after obj = null?",
+    "Options": [
+      "No GC need have processed the target yet",
+      "Weak references always become strong for one minute",
+      "Setting null immediately pins the object",
+      "Finalizers run on every assignment"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Nulling one variable does not trigger GC. Other strong references or timing can also affect availability; the retrieved target is then a strong local reference.\n\nRemoving a local strong reference does not synchronously clear weak references. Both true and false are possible depending on lifetime, other paths and collection timing. In the ordinary initial short-weak scenario, true does not mean the finalizer already ran. Avoid using weak-reference polling as a resource-cleanup ordering mechanism."
+  },
+  {
+    "Id": "gc-104",
+    "Round": "Deep dive",
+    "Number": 102,
+    "Topic": "Handles & weak references",
+    "Prompt": "Does ConditionalWeakTable independently keep every key alive?",
+    "Options": [
+      "No; the association does not independently root the key",
+      "Only when its value references the key",
+      "Only if the key is a string",
+      "Yes, like a normal strong dictionary"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "A live table associates a value with a key conditionally. If the key is otherwise reachable, its associated value is retained through that association.\n\nCompare a normal Dictionary: a reachable dictionary strongly retains its keys and values. A reachable ConditionalWeakTable instead uses dependent-lifetime associations; the key needs an independent reachable path. The table's own lifetime still matters too, so do not say association behavior is independent of whether the table instance remains alive."
+  },
+  {
+    "Id": "gc-105",
+    "Round": "Deep dive",
+    "Number": 103,
+    "Topic": "Handles & weak references",
+    "Prompt": "In a live ConditionalWeakTable, value V points back to key K. Can that association alone keep an otherwise unreachable K alive?",
+    "Options": [
+      "Yes, but only on server GC",
+      "No; values can never contain reference fields",
+      "Yes, every back-reference creates an independent root",
+      "No; that isolated key/value cycle does not independently root the key"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "Dependent-handle processing prevents the association's own value-to-key path from defeating weak-key behavior.\n\nOtherwise every value that pointed back to its key would defeat the purpose of weak-key storage. If an unrelated root independently references V, then V's ordinary field reference to K can keep K alive; that is a different external path. The isolated table association by itself is what must not establish self-sustaining liveness."
+  },
+  {
+    "Id": "gc-106",
+    "Round": "Deep dive",
+    "Number": 104,
+    "Topic": "Handles & weak references",
+    "Prompt": "Why may dependent-handle processing need multiple passes?",
+    "Options": [
+      "Retaining one value can make another key reachable, exposing another value",
+      "Every value is automatically pinned",
+      "Each handle must run a finalizer twice",
+      "The OS changes page sizes on every pass"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "For example a rooted K1 retains V1, which references K2, allowing V2 to survive too. Processing continues until no additional dependent liveness is found.\n\nFor example, rooted K1 activates its association with V1; V1 has an ordinary field referencing K2; K2 then activates V2. A single pass that checked K2 before discovering V1's reference could miss that chain. Processing to a stable result handles these dependencies without treating all table keys as unconditional roots."
+  },
+  {
+    "Id": "gc-107",
+    "Round": "Deep dive",
+    "Number": 105,
+    "Topic": "Finalization & disposal",
+    "Prompt": "What normally makes a C# class instance finalizable?",
+    "Options": [
+      "Implementing IDisposable alone",
+      "Being allocated on the LOH",
+      "Having an effective finalizer, declared in the class or inherited",
+      "Having any public method"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "A C# destructor declaration compiles to a Finalize override. Interfaces do not supply inherited finalizers.\n\nFor class Example, ~Example() { ... } is C# finalizer syntax, compiled into the runtime Finalize pattern. You cannot make a class implement IDisposable without satisfying its interface contract, whether directly or through inherited/explicit implementation. Adding Dispose does not create a finalizer, and removing a finalizer does not remove the need for explicit cleanup of owned resources."
+  },
+  {
+    "Id": "gc-108",
+    "Round": "Deep dive",
+    "Number": 106,
+    "Topic": "Finalization & disposal",
+    "Prompt": "When is a newly created finalizable object normally registered for finalization?",
+    "Options": [
+      "Only when its generation becomes 2",
+      "During allocation/initialization by the runtime",
+      "Only when Dispose is called",
+      "Only after its finalizer has completed"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Registration precedes unreachability. Later GC processing identifies registered unreachable objects for finalization, unless finalization is suppressed.\n\nDo not confuse the initial registration mechanism with later readiness for finalization. When a GC finds an otherwise unreachable registered object that still needs finalization, it arranges for finalizer execution and preserves the needed graph. Calling SuppressFinalize can make that execution unnecessary without a promise that the registration's internal storage is physically erased immediately."
+  },
+  {
+    "Id": "gc-109",
+    "Round": "Deep dive",
+    "Number": 107,
+    "Topic": "Finalization & disposal",
+    "Prompt": "When an unreachable finalizable object is found, why are its referenced managed objects retained?",
+    "Options": [
+      "The finalizer may still access the object's reachable graph",
+      "Every referenced object must be disposed automatically",
+      "All objects become permanently rooted",
+      "Finalization order is guaranteed by those references"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "GC preserves memory safety while finalization is pending. Retention does not guarantee that another finalizable object's resources have not already been cleaned up.\n\nThe finalizer may read fields or invoke code using referenced objects, so reclaiming those objects' managed storage too early would break memory safety. However, preserving storage does not guarantee their own finalizers have not run. Objects independently rooted elsewhere also stay alive through those separate paths. Retention protects access to memory, not a universal resource-cleanup order."
+  },
+  {
+    "Id": "gc-110",
+    "Round": "Deep dive",
+    "Number": 108,
+    "Topic": "Finalization & disposal",
+    "Prompt": "Is finalization order guaranteed by object reference order?",
+    "Options": [
+      "No; avoid depending on another managed object's usable resource state in a finalizer",
+      "Yes, children always finalize after parents",
+      "Yes, fields are finalized alphabetically",
+      "Only for objects implementing IDisposable"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "An object can still exist in memory while its finalizer has already released a resource. Explicit disposal gives controlled cleanup ordering.\n\nSuppose A's finalizer reaches B through a field. B's managed instance remains safely accessible as required, but B may already have closed its native handle in its own finalizer. That is an already-cleaned-up resource issue, not necessarily a dangling managed reference. Prefer explicit disposal for ordered ownership and SafeHandle for directly owned native handles."
+  },
+  {
+    "Id": "gc-111",
+    "Round": "Deep dive",
+    "Number": 109,
+    "Topic": "Finalization & disposal",
+    "Prompt": "Does the GC automatically call Dispose on an unreachable IDisposable object?",
+    "Options": [
+      "Only for generation 2 objects",
+      "Only when the object has no finalizer",
+      "Yes, before every collection",
+      "No; callers, using or an owning framework must arrange disposal"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "IDisposable is a cleanup contract, not an instruction to the GC. A finalizer runs only if the type has one and finalization is applicable.\n\nIf no caller disposes a managed wrapper with no finalizer, GC can still reclaim its managed storage when unreachable, but that is not execution of its cleanup contract. A finalizer body only calls Dispose if the developer wrote such a call. using is compiler-generated try/finally-style disposal, not the GC secretly calling the interface."
+  },
+  {
+    "Id": "gc-112",
+    "Round": "Deep dive",
+    "Number": 110,
+    "Topic": "Finalization & disposal",
+    "Prompt": "What is the usual role of Dispose(bool disposing)?",
+    "Options": [
+      "With true, force a full GC",
+      "With false, free all process memory",
+      "With true, clean up managed and unmanaged resources; with false, avoid relying on other managed objects' cleanup state",
+      "With false, call every managed finalizer directly"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Explicit Dispose normally calls Dispose(true). A finalizer may call Dispose(false) to release directly owned unmanaged resources safely.\n\nTypical shape: public Dispose() calls Dispose(true), then GC.SuppressFinalize(this); ~Owner() calls Dispose(false). true means explicit cleanup may dispose owned managed resources as well as release unmanaged ownership. false avoids depending on other managed objects' cleanup state. The finalizer is a separate method outside Dispose, not a method declaration nested inside it."
+  },
+  {
+    "Id": "gc-113",
+    "Round": "Deep dive",
+    "Number": 111,
+    "Topic": "Finalization & disposal",
+    "Prompt": "Why make Dispose(bool) protected virtual in an inheritable disposal pattern?",
+    "Options": [
+      "So the class becomes static",
+      "So derived classes can extend cleanup through an override",
+      "So GC can call public Dispose automatically",
+      "So every caller can invoke it directly"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Protected provides an extension point for derived classes; virtual allows overriding. The public Dispose entry point typically invokes it and suppresses finalization.\n\nprotected means the method is available to the class and derived classes, not arbitrary callers. virtual means a derived class can override it to clean up additional owned resources, normally calling base.Dispose(disposing). public on its own is only an accessibility modifier: a public ordinary method is not overridable unless the appropriate virtual/abstract/override mechanism applies."
+  },
+  {
+    "Id": "gc-114",
+    "Round": "Deep dive",
+    "Number": 112,
+    "Topic": "Finalization & disposal",
+    "Prompt": "Why call GC.SuppressFinalize(this) after successful explicit cleanup?",
+    "Options": [
+      "To avoid unnecessary finalization for that instance",
+      "To make managed memory disappear immediately",
+      "To suppress all future collections in the process",
+      "To permanently pin the object"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Suppression tells the runtime finalization is unnecessary for that instance. Internal registration bookkeeping need not be physically erased immediately.\n\nIf explicit disposal already released the native resource, later finalization would be unnecessary work and could be dangerous in a badly written release routine. Suppression targets that instance's finalizer, not all collections or every object of its type. The object can still become unreachable and be collected normally. A class with no effective finalizer ordinarily does not need this call for itself."
+  },
+  {
+    "Id": "gc-115",
+    "Round": "Deep dive",
+    "Number": 113,
+    "Topic": "Finalization & disposal",
+    "Prompt": "Why keep an already-disposed guard even when calling SuppressFinalize?",
+    "Options": [
+      "Dispose can still be called repeatedly, so cleanup should be idempotent",
+      "GC always ignores suppression",
+      "The guard makes every access thread-safe automatically",
+      "Suppression runs Dispose twice"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "A caller can call Dispose more than once; derived cleanup can also invoke the pattern. A plain boolean guard is not by itself a complete concurrent-disposal synchronization solution.\n\nSuppose the caller executes owner.Dispose() twice. SuppressFinalize prevents finalizer work; it does not prevent the second explicit call. A disposed flag or a stronger release-once ownership mechanism ensures the resource is not released twice. Forgetting to call Dispose is a separate fallback-finalization problem, not the main reason to guard repeated explicit disposal."
+  },
+  {
+    "Id": "gc-116",
+    "Round": "Deep dive",
+    "Number": 114,
+    "Topic": "Finalization & disposal",
+    "Prompt": "A class only owns managed IDisposable fields. Does it necessarily need its own finalizer?",
+    "Options": [
+      "Yes, every IDisposable implementation needs one",
+      "Yes, otherwise GC cannot collect it",
+      "Only if it has a public constructor",
+      "No; explicit Dispose can release those fields without adding a finalizer"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "Finalizers are generally for directly owned unmanaged resources. Prefer SafeHandle for native-handle ownership rather than adding avoidable finalizers.\n\nIf a field is a SafeHandle, it already encapsulates native ownership and a finalization fallback. Your wrapper can dispose it explicitly without necessarily adding another finalizer. Removing both a custom finalizer and SuppressFinalize is often right when no direct unmanaged ownership requires that finalizer; blindly removing a necessary fallback from raw-handle ownership is different."
+  },
+  {
+    "Id": "gc-117",
+    "Round": "Deep dive",
+    "Number": 115,
+    "Topic": "Finalization & disposal",
+    "Prompt": "What risk does releasing the same native handle twice create?",
+    "Options": [
+      "Automatic memory compaction",
+      "A double release, potentially affecting an invalid or reused handle",
+      "A guaranteed generation 0 collection",
+      "Only an extra weak reference"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Native resources require clear ownership and reliable release-once behavior. SafeHandle helps encapsulate lifetime and release logic.\n\nA file handle number can be reused by the OS after close. A stale second close can target invalid or even newly reassigned ownership, so 'it only wastes time' is unsafe reasoning. Use SafeHandle where possible, and design disposal ownership carefully. A plain unsynchronized disposed boolean alone does not settle every race between concurrent callers."
+  },
+  {
+    "Id": "gc-118",
+    "Round": "Deep dive",
+    "Number": 116,
+    "Topic": "Finalization & disposal",
+    "Prompt": "What is resurrection in a finalizer?",
+    "Options": [
+      "Moving its method to a new DLL",
+      "Calling Dispose on all roots",
+      "Returning its memory to Windows",
+      "Making this reachable again, for example by assigning it to a static field"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "A strong root created by the finalizer can retain the instance. This is difficult to reason about and should generally be avoided.\n\nFor example, a finalizer could assign a static field to this, creating a new strong path. The instance is now reachable through that root, even though it was previously unreachable and queued. Its fields or external resources may already be partly cleaned up, which makes resurrection difficult to use correctly. 'Finalizer ran' is not the definition of unreachable."
+  },
+  {
+    "Id": "gc-119",
+    "Round": "Deep dive",
+    "Number": 117,
+    "Topic": "Finalization & disposal",
+    "Prompt": "Does a resurrected object automatically run its finalizer again when later unreachable?",
+    "Options": [
+      "Yes, indefinitely",
+      "No; another finalization requires appropriate re-registration",
+      "Yes, whenever a weak reference exists",
+      "Only when it is on the LOH"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "GC.ReRegisterForFinalize can register it again. Without that, normal resurrection does not establish an automatic second finalization.\n\nGC.ReRegisterForFinalize(obj) is an explicit request for another finalization opportunity when appropriate. trackResurrection: true only changes a weak reference's tracking behavior; it does not call this API. A resurrected instance may therefore be used and later collected without its finalizer running a second time if it was not re-registered."
+  },
+  {
+    "Id": "gc-120",
+    "Round": "Deep dive",
+    "Number": 118,
+    "Topic": "Finalization & disposal",
+    "Prompt": "Does completing a finalizer immediately delete the object's managed memory?",
+    "Options": [
+      "No; finalizable objects can never be reclaimed",
+      "Yes, on the finalizer's return instruction",
+      "No; a later GC may reclaim it if it is no longer reachable",
+      "Yes, along with every referenced object"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Finalization and memory reclamation are separate. Resurrection or other remaining paths can retain the object further.\n\nAfter finalization, a later collection can reclaim the object if no strong path keeps it alive and no further finalization requirement applies. A static resurrection path can prevent that reclamation. Finalizer completion is therefore neither immediate deletion nor a guaranteed transition to unreachability; the reference graph still determines reachability."
+  },
+  {
+    "Id": "gc-121",
+    "Round": "Deep dive",
+    "Number": 119,
+    "Topic": "Finalization & disposal",
+    "Prompt": "What does GC.WaitForPendingFinalizers do?",
+    "Options": [
+      "Compacts generation 0 directly",
+      "Calls Dispose on all objects",
+      "Waits for pending finalizers; it does not itself request a collection",
+      "Guarantees all memory is returned to Windows"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "It waits for finalization processing. It neither makes every object eligible nor guarantees reclaimed memory; blocking finalizers can delay it.\n\nIn a controlled diagnostic demonstration, GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect(); separates discovery, finalizer waiting and later reclamation. This is not a recommendation to insert that sequence into routine request handling. WaitForPendingFinalizers is called by developer code and can block while pending finalizers execute; it does not itself discover all unreachable objects."
+  },
+  {
+    "Id": "gc-122",
+    "Round": "Deep dive",
+    "Number": 120,
+    "Topic": "Finalization & disposal",
+    "Prompt": "What can a blocked finalizer cause?",
+    "Options": [
+      "Only a slower UI repaint",
+      "All finalizers to become compile errors",
+      "The GC to start calling Dispose instead",
+      "A backlog of objects awaiting finalization and additional memory retention"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "A finalizer that blocks can delay processing of others on the finalizer thread. Avoid blocking and complex work there.\n\nIf a finalizer waits on a lock whose owner is waiting for finalization, cleanup can stall or deadlock. Pending finalizable objects and their reachable graphs can accumulate. Keeping finalizers short and focused on directly owned unmanaged resources reduces this risk. A large finalization backlog can be a retention cause even with otherwise functioning GC."
+  },
+  {
+    "Id": "gc-123",
+    "Round": "Deep dive",
+    "Number": 121,
+    "Topic": "Finalization & disposal",
+    "Prompt": "What is the normal consequence of an unhandled exception escaping a finalizer in modern .NET / default .NET Framework policy?",
+    "Options": [
+      "Only that object's field is cleared",
+      "It is silently ignored in every application",
+      "It can terminate the process",
+      "The finalizer is automatically retried forever"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Finalizers should not allow exceptions to escape. Catastrophic failures are not made safe merely by adding a try/catch around ordinary cleanup.\n\nAn escaping exception means it is not successfully handled before leaving the finalizer. Merely writing a try/catch somewhere does not ensure every catastrophic failure is recoverable. Ordinary cleanup should not throw out of a finalizer; rely on reliable ownership abstractions rather than complex fallback code. Process termination policy is a reason finalizers must remain simple."
+  },
+  {
+    "Id": "gc-124",
+    "Round": "Deep dive",
+    "Number": 122,
+    "Topic": "Suspension & GC modes",
+    "Prompt": "Who coordinates suspending managed execution for a GC pause?",
+    "Options": [
+      "The application's finalizers",
+      "The JIT compiling all methods again at every pause",
+      "The operating system deleting managed stacks",
+      "The runtime's execution/thread machinery, using compiler-provided GC support"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "The compiler supplies interruptibility and liveness information. The runtime uses it to coordinate safe scanning and updates.\n\nThe JIT's earlier compilation establishes GC reporting and interruptibility information. Later, the runtime coordinates thread transitions/suspension and consults that information; it does not ask the optimizer to compile the stack again. In modern .NET these execution-engine responsibilities live within CoreCLR, rather than requiring a separate application DLL named 'execution engine.'"
+  },
+  {
+    "Id": "gc-125",
+    "Round": "Deep dive",
+    "Number": 123,
+    "Topic": "Suspension & GC modes",
+    "Prompt": "What is meant by a partially interruptible compiled method?",
+    "Options": [
+      "It cannot contain any references",
+      "It can only execute half its instructions",
+      "It supports safe GC suspension at designated points rather than throughout its execution",
+      "It always runs on the finalizer thread"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "The compiler's GC encoding describes where suspension and reference reporting are supported. Details depend on the architecture and compilation mode.\n\nThe runtime must obtain a position where the compiler can accurately report and update live references. 'Partially interruptible' describes where that information supports suspension, not a developer putting Thread.Sleep halfway through a method. A fully interruptible region provides broader reporting coverage; it still relies on metadata rather than guessing which machine words are pointers."
+  },
+  {
+    "Id": "gc-126",
+    "Round": "Deep dive",
+    "Number": 124,
+    "Topic": "Suspension & GC modes",
+    "Prompt": "Which describes parallel GC versus concurrent GC?",
+    "Options": [
+      "Parallel uses multiple GC workers; concurrent overlaps some GC work with application execution",
+      "Both mean methods use async/await",
+      "Both mean the application is never paused",
+      "Parallel means only generation 0; concurrent means only the LOH"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Parallelism is about GC workers doing work together. Concurrency is about overlap with application threads; one does not imply the other.\n\nA blocking server collection can use several GC threads in parallel while application threads are paused. Background marking can overlap application work, potentially also using multiple workers. Consequently, seeing many GC threads does not prove concurrency with your request threads, and seeing a GC wait frame alone does not identify which complete GC algorithm is active."
+  },
+  {
+    "Id": "gc-127",
+    "Round": "Deep dive",
+    "Number": 125,
+    "Topic": "Suspension & GC modes",
+    "Prompt": "Background GC primarily applies to which generation?",
+    "Options": [
+      "Generation 0",
+      "Generation 1 only",
+      "Generation 2",
+      "Every individual allocation"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Background generation 2 collection overlaps much work with the application. Young collections and necessary coordination still cause pauses.\n\nGeneration 0 and 1 work can happen as foreground pauses during that background generation 2 collection. Root coordination and final portions also require pauses. So 'background GC applies to generation 2' does not mean a full-collection interval excludes younger objects or that application allocation must stop for the whole interval."
+  },
+  {
+    "Id": "gc-128",
+    "Round": "Deep dive",
+    "Number": 126,
+    "Topic": "Suspension & GC modes",
+    "Prompt": "Which work ordinarily requires a stop-the-world pause in .NET?",
+    "Options": [
+      "All background marking for its entire duration",
+      "Moving compaction and its reference relocation",
+      "Every write to an ordinary local variable",
+      "Every allocation-context refill"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Moving objects and updating their references requires coordinated suspension. Background GC is not synonymous with fully concurrent collection phases.\n\nA pause allows the runtime to present a consistent set of reference locations and planned destinations. Threads in native/preemptive states and runtime transition machinery can appear differently in a dump, so not every OS thread has to show an identical GC wait frame. The important guarantee concerns safe managed-reference handling during the moving operation."
+  },
+  {
+    "Id": "gc-129",
+    "Round": "Deep dive",
+    "Number": 127,
+    "Topic": "Suspension & GC modes",
+    "Prompt": "How are workstation/server GC and background GC related?",
+    "Options": [
+      "They are separate configuration dimensions",
+      "Server GC always disables all background work",
+      "Background GC is a third generation",
+      "Workstation GC can never pause"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Workstation versus server concerns the GC's organization and workload goals. Background versus blocking concerns how collection work overlaps execution.\n\nServer GC generally organizes heaps and workers for throughput-oriented workloads; workstation GC generally emphasizes other usage patterns and resource tradeoffs. Either can have background support in appropriate runtime versions. Historical concurrent GC is not identical to background GC: an important improvement was allowing foreground young collections during background generation 2 work."
+  },
+  {
+    "Id": "gc-130",
+    "Round": "Deep dive",
+    "Number": 128,
+    "Topic": "Suspension & GC modes",
+    "Prompt": "Why can switching to server GC increase memory usage?",
+    "Options": [
+      "Every server object becomes pinned",
+      "Server GC duplicates every application object",
+      "Server GC disables collection permanently",
+      "Multiple GC heaps and different allocation budgets can allow a larger footprint"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "Server GC often trades additional resources for throughput. Heap counts, budgets, memory constraints and runtime policies influence the result.\n\nMore allocation capacity and heap organization can reduce collection frequency or allow more parallel GC work, increasing throughput in suitable workloads while retaining more capacity. That memory increase is not proof every object was duplicated or leaked. Compare live object retention, committed space and workload limits before deciding whether the change is acceptable."
+  },
+  {
+    "Id": "gc-131",
+    "Round": "Deep dive",
+    "Number": 129,
+    "Topic": "Suspension & GC modes",
+    "Prompt": "Does eight server GC heaps prove the machine has exactly eight logical processors?",
+    "Options": [
+      "Yes, in every environment",
+      "Yes, because one heap is a physical CPU",
+      "No; configuration, affinity, CPU limits and runtime policy can affect heap count",
+      "No; server GC always has one heap"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Heap count often relates to available processors, but it is not an authoritative count of the machine's logical CPUs.\n\nCPU affinity, container/job CPU limits, explicit heap-count settings and adaptive behavior can affect what the runtime uses. Some modern policies can also adjust server heap organization. Separately, foreground and background worker counts can differ from heap count. Use system/runtime configuration evidence to determine processor availability instead of deriving it from one heap number."
+  },
+  {
+    "Id": "gc-132",
+    "Round": "Deep dive",
+    "Number": 130,
+    "Topic": "Suspension & GC modes",
+    "Prompt": "What does throughput mean when evaluating GC settings?",
+    "Options": [
+      "Useful operations completed per unit of time",
+      "The number of reserved addresses",
+      "The single longest pause",
+      "Only the count of finalizers"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Examples include requests per second or jobs per minute. Evaluate throughput alongside latency, pause time and memory usage.\n\nIf configuration A completes 1,000 requests/second and B completes 1,150 under the same load conditions, B has 15% higher measured throughput. It can still consume more memory or have worse high-percentile latency. A good choice depends on whether those resource and response-time tradeoffs meet the application's goals."
+  },
+  {
+    "Id": "gc-133",
+    "Round": "Deep dive",
+    "Number": 131,
+    "Topic": "Suspension & GC modes",
+    "Prompt": "A background GC lasts 400 ms, but total application pause time is 30 ms. Which is true?",
+    "Options": [
+      "Collection elapsed time and pause time are different measurements",
+      "The application was necessarily stopped for all 400 ms",
+      "No GC work occurred",
+      "The numbers prove heap corruption"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Much collection work can overlap application execution. Elapsed collection duration is not equal to time the application was suspended.\n\nFor example, the collector may trace concurrently while requests run, with short pauses for necessary coordination. Total elapsed duration includes that overlapping work. It also need not equal total GC CPU time when several workers run in parallel. Always distinguish elapsed collection time, accumulated CPU time and application pause time."
+  },
+  {
+    "Id": "gc-134",
+    "Round": "Deep dive",
+    "Number": 132,
+    "Topic": "Suspension & GC modes",
+    "Prompt": "Why is a lower GC count alone insufficient evidence of better responsiveness?",
+    "Options": [
+      "Collection duration, pauses and non-GC bottlenecks also matter",
+      "Fewer collections always mean no memory leaks",
+      "GC counts are always random",
+      "A collection count is already a latency percentile"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Measure actual pause and response-time distributions. Locks, I/O and CPU contention may dominate latency even when GC pauses are small.\n\nA smaller number of long pauses can hurt p99 latency more than many short pauses. A request can also take 500 ms while GC pauses account for only 10 ms, leaving locks, I/O, CPU scheduling or other work to investigate. Avoid attributing every slow request to the nearest GC event."
+  },
+  {
+    "Id": "gc-135",
+    "Round": "Deep dive",
+    "Number": 133,
+    "Topic": "Suspension & GC modes",
+    "Prompt": "How should two GC configurations be compared fairly?",
+    "Options": [
+      "Always choose the setting using the most RAM",
+      "Change hardware and request patterns between runs",
+      "Compare only one collection count",
+      "Use comparable workloads, warm-up and repeated measurements of throughput, latency and memory"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "Consistent conditions and repeated measurements reduce misleading conclusions. The best tradeoff depends on the workload and constraints.\n\nMeasure at least allocation rate, live/committed memory, throughput and response-time/GC-pause distributions. Warm-up matters because JIT compilation, caching and startup allocations can distort a short test. Repeat runs and keep machine/workload conditions comparable. Accepting more memory for better throughput is a workload decision, not an automatic win or loss."
+  },
+  {
+    "Id": "gc-136",
+    "Round": "Deep dive",
+    "Number": 134,
+    "Topic": "Diagnostics & memory",
+    "Prompt": "When would forcing GC.Collect after every request usually be a bad idea?",
+    "Options": [
+      "Never; it always improves throughput",
+      "Only for empty strings",
+      "Only when the process has no managed heap",
+      "When normal runtime GC policy can handle allocation and survival"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "Frequent forced collections add scanning and pauses and can disrupt adaptive policy. Measure and address retention or allocation causes first.\n\nA forced full collection can scan survivors and introduce blocking work even when the adaptive collector would wait. It cannot reclaim a cache entry that remains strongly rooted. If the underlying issue is an unbounded static collection, fixing its retention policy matters more than forcing GC more frequently. Use measurements to distinguish retention from allocation pressure."
+  },
+  {
+    "Id": "gc-137",
+    "Round": "Deep dive",
+    "Number": 135,
+    "Topic": "Diagnostics & memory",
+    "Prompt": "When can an explicit GC.Collect be justified?",
+    "Options": [
+      "Whenever a local variable is set to null",
+      "As the primary fix for a rooted memory leak",
+      "Before every database query",
+      "A measured, unusual lifecycle scenario or controlled diagnostic/test experiment"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "Explicit collection should have a specific demonstrated purpose. It cannot reclaim objects still strongly reachable from roots.\n\nExamples include a controlled experiment to study weak/finalizable lifetimes or a measured application lifecycle transition after unusually large temporary work. Consider whether the normal collector already responds adequately and whether the pause is acceptable. Explicit GC is not the normal mechanism for disposing files or freeing a GCHandle's target one object at a time."
+  },
+  {
+    "Id": "gc-138",
+    "Round": "Deep dive",
+    "Number": 136,
+    "Topic": "Diagnostics & memory",
+    "Prompt": "Is GC.Collect always concurrent?",
+    "Options": [
+      "No; behavior depends on overload, mode, blocking request and GC state",
+      "Yes, every overload is nonblocking",
+      "No; it never performs marking",
+      "Yes, because all GC runs on background threads"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "The simple GC.Collect() requests a full blocking collection. Overloads can request different behavior; nonblocking requests are subject to runtime rules and state.\n\nThe parameterless call requests an immediate full blocking collection. Overloads expose generation, collection mode, blocking and compaction requests, but runtime state affects supported nonblocking behavior. Collection still needs tracing before reclamation. A nonblocking request is not permission to perform moving compaction while application threads mutate references freely."
+  },
+  {
+    "Id": "gc-139",
+    "Round": "Deep dive",
+    "Number": 137,
+    "Topic": "Diagnostics & memory",
+    "Prompt": "A service's live managed heap keeps growing. What should you inspect first?",
+    "Options": [
+      "Only the process's file size on disk",
+      "Retained types and paths to roots in a suitable dump or heap snapshot",
+      "Only the source-code indentation",
+      "The number of installed SDKs"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Root paths reveal static collections, event subscriptions, handles and other retention. A managed leak is unwanted reachability, not necessarily GC failure.\n\nFor example, find a large dictionary type, inspect its instances and follow paths to roots to see whether a static session map retains it. Large reachable graph size does not mean millions of roots exist: a single static field can retain millions of descendants. Review object ownership and expected cache/session lifetimes before concluding the runtime is leaking."
+  },
+  {
+    "Id": "gc-140",
+    "Round": "Deep dive",
+    "Number": 138,
+    "Topic": "Diagnostics & memory",
+    "Prompt": "What is the difference between an object's shallow size and inclusive reachable size?",
+    "Options": [
+      "Shallow size is the object itself; inclusive size includes objects reached from it",
+      "Shallow size includes every object in the process",
+      "Inclusive size means reserved virtual memory",
+      "Both always count only its header"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Inclusive graph size can be much larger than the object itself. Shared descendants mean reachable size is not necessarily exclusively retained size.\n\nA bucket array may be only a few megabytes itself but reach hundreds of megabytes of entries and their object graphs. A graph-size command can therefore disagree with a shallow-size statistics column without either being wrong. Inclusive size may count shared descendants reached through this object; that is not automatically memory exclusively retained by it."
+  },
+  {
+    "Id": "gc-141",
+    "Round": "Deep dive",
+    "Number": 139,
+    "Topic": "Diagnostics & memory",
+    "Prompt": "What does exclusively retained size aim to describe?",
+    "Options": [
+      "All memory reserved by Windows",
+      "Memory that would become collectible if that retention path/object were removed, accounting for other paths",
+      "Only the object's MethodTable",
+      "Every byte ever allocated by the thread"
+    ],
+    "CorrectIndex": 1,
+    "Explanation": "Shared reachable objects can survive through other roots. Tools use different graph and attribution rules, so check the tool's metric definition.\n\nSuppose A and B both reference C. Removing A does not make C collectible while rooted B still reaches it. Therefore the bytes reachable from A can exceed the bytes exclusively retained through A. Some views use spanning-tree attribution rather than exact dominator analysis, so interpret percentages and counts using the tool's stated semantics."
+  },
+  {
+    "Id": "gc-142",
+    "Round": "Deep dive",
+    "Number": 140,
+    "Topic": "Diagnostics & memory",
+    "Prompt": "Why can process memory be large while live managed objects total much less?",
+    "Options": [
+      "Native allocations, GC free space, stacks, images and other committed memory also contribute",
+      "The dump file size equals live managed size exactly",
+      "Static fields always store terabytes inline",
+      "Every managed heap byte must be a live object"
+    ],
+    "CorrectIndex": 0,
+    "Explanation": "Process memory categories differ from managed object totals. Also distinguish committed memory, working set and virtual reservation.\n\nFor example, WinDbg's native Heap usage category is not a direct total of managed GC objects. A .dmp file's on-disk length also does not equal virtual reservation, resident RAM or shallow managed object bytes. Use appropriate committed-memory and heap views, and remember that large reserved ranges can have little or no backing allocated."
+  },
+  {
+    "Id": "gc-143",
+    "Round": "Deep dive",
+    "Number": 141,
+    "Topic": "Diagnostics & memory",
+    "Prompt": "What does MEM_RESERVE mean?",
+    "Options": [
+      "All of those bytes are resident RAM",
+      "An object is registered for finalization",
+      "The range is immediately writable without commitment",
+      "An address range is set aside without committing backing storage for its pages"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "Reservation occupies part of the process's virtual address space. Data access generally requires appropriate commitment and protection.\n\nThe reserved addresses belong to this process's virtual address map, not a permanently reserved set of physical RAM chips. Another process can use the same numerical virtual addresses in its own map without conflict. Reserving a large range does not by itself allocate that amount of resident RAM or allow your code to write to every page."
+  },
+  {
+    "Id": "gc-144",
+    "Round": "Deep dive",
+    "Number": 142,
+    "Topic": "Diagnostics & memory",
+    "Prompt": "What does decommitting memory do?",
+    "Options": [
+      "Necessarily releases the address reservation too",
+      "Always deletes the process",
+      "Releases commitment/backing resources while leaving the address range reserved",
+      "Converts managed objects to static roots"
+    ],
+    "CorrectIndex": 2,
+    "Explanation": "Decommit and release are different operations. A reserved virtual address can remain assigned to the process even when its backing resources are released.\n\nDecommit releases commitment for pages, so those pages are no longer usable for ordinary data access until recommitted. The process can still retain the numerical virtual address range. Physical backing released from those pages can serve another purpose while the address reservation stays with the process. Releasing the reservation is a separate step."
+  },
+  {
+    "Id": "gc-145",
+    "Round": "Deep dive",
+    "Number": 143,
+    "Topic": "Diagnostics & memory",
+    "Prompt": "Does committed memory equal the process's resident physical RAM?",
+    "Options": [
+      "No; committed memory cannot store data",
+      "Yes, always",
+      "Yes, unless the process is 64-bit",
+      "No; committed virtual memory has backing obligations, while residency is a separate measurement"
+    ],
+    "CorrectIndex": 3,
+    "Explanation": "Committed pages need not all be resident simultaneously. Working-set/residency information is needed to discuss RAM currently in use.\n\nCommitted virtual memory has backing/storage obligations, but pages can be resident, paged out or not yet physically instantiated depending on the mapping and OS behavior. The working set concerns resident pages; it is not the same total as committed space. Reserved address space is another larger category that has not necessarily been committed at all."
+  }
+]

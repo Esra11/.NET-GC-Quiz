@@ -1,0 +1,34 @@
+name: Build and verify Windows app
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build
+        run: dotnet build DotNetGcQuiz.slnx -c Release
+      - name: Verify content and exam behavior
+        run: dotnet run --project tests/DotNetGcQuiz.Tests -c Release --no-build
+      - name: Verify Windows UI
+        run: dotnet run --project src/DotNetGcQuiz -c Release --no-build -- --smoke-test artifacts/ui
+      - name: Verify full report responsiveness and scrolling
+        run: dotnet run --project src/DotNetGcQuiz -c Release --no-build -- --report-benchmark artifacts/report-benchmark
+      - name: Publish self-contained app
+        run: dotnet publish src/DotNetGcQuiz -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/publish/win-x64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dotNET-GC-Quiz-win-x64
+          path: artifacts/publish/win-x64/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: UI-verification
+          path: artifacts/ui/

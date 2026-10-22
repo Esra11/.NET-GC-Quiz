@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/DotNetGcQuiz/Quiz.cs" Link="Quiz.cs" />
+    <EmbeddedResource Include="../../src/DotNetGcQuiz/Content/questions.json" LogicalName="DotNetGcQuiz.Content.questions.json" />
+    <EmbeddedResource Include="../../src/DotNetGcQuiz/Content/introduction.txt" LogicalName="DotNetGcQuiz.Content.introduction.txt" />
+  </ItemGroup>
+</Project>

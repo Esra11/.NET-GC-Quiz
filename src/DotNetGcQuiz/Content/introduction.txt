@@ -1,0 +1,30 @@
+.NET GARBAGE COLLECTION — THE BIG PICTURE
+
+• What GC does
+The garbage collector manages managed heap memory. Your code creates objects; GC finds objects that are still reachable and reclaims space occupied by objects that are no longer needed. It does not automatically call Dispose(), close files or guarantee when cleanup happens. A collection can be triggered by allocation budgets, memory pressure or an explicit GC.Collect().
+
+• Reachability, roots and generations
+GC starts from roots: live references in stacks and registers, static fields and certain runtime handles. It follows managed references from these roots. Two objects referencing each other are still collectible if neither is reachable from a root. The JIT or AOT compiler supplies GC information describing live references in compiled code; type information describes references inside heap objects.
+
+Most small objects begin in generation 0. Survivors usually move to generation 1, then generation 2. Generation 2 is the oldest generation; survivors stay there. Collecting generation 1 includes generation 0; collecting generation 2 includes the younger generations. Promotion does not always require moving an object's address.
+
+• Mark and plan
+Marking traces reachable objects, recording which must survive. A work stack tracks references still to visit. An unmarked object is not necessarily garbage while marking is unfinished. Finalizable objects may need additional retention so their finalizers can run.
+
+Planning decides how to reclaim space, weighing fragmentation, survivors, pinned objects and the cost of moving memory. A plug is a contiguous run of surviving objects treated as a unit during planning. A collection can sweep some areas and compact others; not every collection runs every phase.
+
+• Sweep, relocate and compact
+Sweeping makes dead space reusable, often combining adjacent free blocks into free lists. Surviving objects stay in place. Relocation updates managed references to the planned new addresses, including references in roots and heap fields. Compaction moves survivors to those addresses, reducing gaps. Moving compaction and reference relocation require application threads to pause. Reclaimed space may remain committed for reuse; freeing an object does not necessarily return memory to Windows immediately.
+
+• Allocation, large objects and pinning
+Small allocations usually use a thread's allocation context: a range with an allocation pointer and limit. The fast path advances the pointer. Refill can happen without a collection. Large objects, normally at least 85,000 bytes including overhead, go to the large object heap (LOH), collected with generation 2. LOH normally sweeps, but compaction can be requested.
+
+Pinned objects cannot move while pinned. Pinning an existing object does not move it to the pinned object heap (POH). Modern .NET offers a POH for supported explicitly pinned allocations; pins in other heaps can still leave fragmentation.
+
+• Background collection and changing references
+Background GC performs substantial generation 2 work alongside application threads, with pauses for coordination. Generation 0 and 1 collections still pause managed execution. Write barriers and card/write-watch bookkeeping help GC account for changed heap references. Floating garbage is an object that becomes unreachable after GC has already marked it; it can survive until a later collection.
+
+• Finalization, disposal and performance
+Dispose() provides explicit resource cleanup; "using" calls it reliably. A finalizer is a fallback for directly owned unmanaged resources and runs unpredictably. GC never calls Dispose() merely because a class implements IDisposable. SuppressFinalize avoids unnecessary finalization after explicit cleanup; an idempotent disposal guard protects against repeated calls. Prefer SafeHandle for native handles.
+
+High allocation rate means many bytes are created per second. Retained memory is what remains alive. Diagnose large heaps by examining object types and their paths to roots; measure pauses, throughput and memory together before changing GC settings.

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>DotNetGcQuiz</AssemblyName>
+    <RootNamespace>DotNetGcQuiz</RootNamespace>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationIcon>Assets/quiz.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <Description>A Windows desktop GC learning and interview quiz.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Content/questions.json" />
+    <EmbeddedResource Include="Content/introduction.txt" />
+    <EmbeddedResource Include="Assets/quiz.ico" />
+  </ItemGroup>
+</Project>
